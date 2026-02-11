@@ -23,14 +23,14 @@
 **Submodule 포함하여 Clone** (권장):
 ```bash
 # 한 줄로 Clone (submodule 포함)
-git clone --recursive https://github.com/dev4unet/pico-webtoon-browser.git
-cd pico-webtoon-browser
+git clone --recursive https://github.com/dev4unet/pico-webtoon-webbrowser.git
+cd pico-webtoon-webbrowser
 ```
 
 **또는** Clone 후 Submodule 초기화:
 ```bash
-git clone https://github.com/dev4unet/pico-webtoon-browser.git
-cd pico-webtoon-browser
+git clone https://github.com/dev4unet/pico-webtoon-webbrowser.git
+cd pico-webtoon-webbrowser
 git submodule init
 git submodule update
 ```

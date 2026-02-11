@@ -116,7 +116,7 @@ net.dev4u.webtoonbrowser
 ## 프로젝트 구조
 
 ```
-pico-webtoon-browser/
+pico-webtoon-webbrowser/
 ├── app/
 │   ├── build.gradle                          # 모듈 빌드 설정
 │   ├── version.properties                    # 버전 관리 (빌드 번호 자동 증가)
@@ -213,7 +213,7 @@ git tag -a v1.0.1 -m "버전 1.0.1 릴리스"
 git push origin v1.0.1
 
 # 3. GitHub Actions가 자동으로 빌드 및 배포
-# https://github.com/dev4unet/pico-webtoon-browser/releases 에서 확인
+# https://github.com/dev4unet/pico-webtoon-webbrowser/releases 에서 확인
 ```
 
 **자동으로 처리되는 작업:**
@@ -260,6 +260,6 @@ git push origin v1.0.1
 **간단 요약**:
 1. JDK 17 설치 및 JAVA_HOME 설정
 2. Android SDK (API 34) 설치 및 ANDROID_HOME 설정
-3. 프로젝트 Clone: `git clone https://github.com/dev4unet/pico-webtoon-browser.git`
+3. 프로젝트 Clone: `git clone https://github.com/dev4unet/pico-webtoon-webbrowser.git`
 4. local.properties 설정: `sdk.dir=C\:\\경로\\Android\\Sdk`
 5. 빌드: `gradlew.bat assembleDebug`

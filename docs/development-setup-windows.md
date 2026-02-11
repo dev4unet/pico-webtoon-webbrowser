@@ -222,10 +222,10 @@ Version 36.0.2-12147458
 cd D:\WorkspaceAndroid
 
 # 프로젝트 Clone
-git clone https://github.com/dev4unet/pico-webtoon-browser.git
+git clone https://github.com/dev4unet/pico-webtoon-webbrowser.git
 
 # 프로젝트 폴더로 이동
-cd pico-webtoon-browser
+cd pico-webtoon-webbrowser
 ```
 
 ---
@@ -364,14 +364,14 @@ adb logcat | findstr "WebtoonBrowser"
 
 1. Android Studio 실행
 2. **File** → **Open**
-3. `pico-webtoon-browser` 폴더 선택
+3. `pico-webtoon-webbrowser` 폴더 선택
 4. Gradle Sync 자동 실행 대기
 
 ### IntelliJ IDEA 설정
 
 1. IntelliJ IDEA 실행
 2. **File** → **Open**
-3. `pico-webtoon-browser` 폴더 선택
+3. `pico-webtoon-webbrowser` 폴더 선택
 4. **Import project from Gradle** 선택
 5. Gradle JVM을 **JDK 17**로 설정
 

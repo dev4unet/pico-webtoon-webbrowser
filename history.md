@@ -116,7 +116,7 @@
 
 ### Git 저장소 연결 및 패키지명/APK명/버전 변경
 
-- Git 초기화 및 SSH 원격 저장소 연결: `git@github.com:dev4unet/pico-webtoon-browser.git`
+- Git 초기화 및 SSH 원격 저장소 연결: `git@github.com:dev4unet/pico-webtoon-webbrowser.git`
 - .gitignore 생성 (build/, .gradle/, local.properties, *.apk, screenshots/)
 - **패키지명 변경**: `com.picowebtoon.browser` → `net.dev4u.webtoonbrowser`
   - app/build.gradle namespace/applicationId 변경

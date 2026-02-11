@@ -27,7 +27,7 @@ git push origin v1.0.1
 
 ### 3. 릴리스 확인
 
-https://github.com/dev4unet/pico-webtoon-browser/releases 에서 확인 가능
+https://github.com/dev4unet/pico-webtoon-webbrowser/releases 에서 확인 가능
 
 ## 릴리스 APK 서명 설정 (선택사항)
 
@@ -36,7 +36,7 @@ https://github.com/dev4unet/pico-webtoon-browser/releases 에서 확인 가능
 ### 1. Keystore 생성
 
 ```bash
-keytool -genkey -v -keystore pico-webtoon-browser.keystore -alias pico-webtoon -keyalg RSA -keysize 2048 -validity 10000
+keytool -genkey -v -keystore pico-webtoon-webbrowser.keystore -alias pico-webtoon -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 입력 정보:
@@ -47,15 +47,15 @@ keytool -genkey -v -keystore pico-webtoon-browser.keystore -alias pico-webtoon -
 
 ### 2. GitHub Secrets 설정
 
-https://github.com/dev4unet/pico-webtoon-browser/settings/secrets/actions 에서:
+https://github.com/dev4unet/pico-webtoon-webbrowser/settings/secrets/actions 에서:
 
 1. `KEYSTORE_FILE`: keystore 파일을 Base64로 인코딩한 값
    ```bash
    # Windows (PowerShell)
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes("pico-webtoon-browser.keystore"))
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("pico-webtoon-webbrowser.keystore"))
 
    # Linux/Mac
-   base64 pico-webtoon-browser.keystore | tr -d '\n'
+   base64 pico-webtoon-webbrowser.keystore | tr -d '\n'
    ```
 
 2. `KEYSTORE_PASSWORD`: keystore 비밀번호
@@ -149,7 +149,7 @@ VERSION_BUILD=7  # 자동 증가 (빌드할 때마다)
 ## 문제 해결
 
 ### GitHub Actions 빌드 실패 시
-1. https://github.com/dev4unet/pico-webtoon-browser/actions 에서 로그 확인
+1. https://github.com/dev4unet/pico-webtoon-webbrowser/actions 에서 로그 확인
 2. JDK 버전, Gradle 버전 확인
 3. Secret 값이 올바르게 설정되었는지 확인
 
