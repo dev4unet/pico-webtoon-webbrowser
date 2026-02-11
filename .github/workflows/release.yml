@@ -61,9 +61,13 @@ jobs:
             - 홈페이지 설정
             - 다크 테마
 
-            ### 설치 방법
+            ### 설치 방법 (Download)
+            1. PICO 4 Ultra에서 직접 웹 브라우저로 첨부된 apk 파일 다운로드
+            2. 다운로드한 apk 실행
+
+            ### 설치 방법 (adb)
             1. PICO 4 Ultra를 PC에 연결
-            2. APK 파일 다운로드
+            2. PC에서 APK 파일 다운로드
             3. `adb install -r <apk파일명>` 실행
 
             ### 파일 설명
