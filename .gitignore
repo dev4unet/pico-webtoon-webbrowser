@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+app/build/
+
+# Local properties
+local.properties
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# APK files
+*.apk
+*.ap_
+*.aab
+
+# Generated
+app/release/
+
+# Screenshots (test artifacts)
+screenshots/
+
+# Keystore files (NEVER commit these!)
+*.keystore
+*.jks
+keystore.properties
+
+# Temporary files
+nul

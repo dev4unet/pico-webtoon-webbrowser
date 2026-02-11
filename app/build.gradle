@@ -1,0 +1,85 @@
+plugins {
+    id 'com.android.application'
+}
+
+// 버전 자동 증가: version.properties 파일에서 빌드 번호 관리
+def versionPropsFile = file('version.properties')
+def versionBuild = 0
+def versionMajor = 1
+def versionMinor = 0
+def versionPatch = 0
+
+if (versionPropsFile.canRead()) {
+    def versionProps = new Properties()
+    versionProps.load(new FileInputStream(versionPropsFile))
+    versionBuild = versionProps['VERSION_BUILD'].toInteger()
+    versionMajor = versionProps['VERSION_MAJOR'].toInteger()
+    versionMinor = versionProps['VERSION_MINOR'].toInteger()
+    versionPatch = versionProps['VERSION_PATCH'].toInteger()
+}
+
+// 빌드할 때마다 빌드 번호 증가
+tasks.register('incrementVersion') {
+    doLast {
+        def versionProps = new Properties()
+        if (versionPropsFile.canRead()) {
+            versionProps.load(new FileInputStream(versionPropsFile))
+        }
+        def build = versionProps['VERSION_BUILD']?.toInteger() ?: 0
+        build++
+        versionProps['VERSION_BUILD'] = build.toString()
+        versionProps['VERSION_MAJOR'] = (versionProps['VERSION_MAJOR'] ?: '1')
+        versionProps['VERSION_MINOR'] = (versionProps['VERSION_MINOR'] ?: '0')
+        versionProps['VERSION_PATCH'] = (versionProps['VERSION_PATCH'] ?: '0')
+        versionProps.store(versionPropsFile.newWriter(), null)
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name == 'assembleDebug' || task.name == 'assembleRelease') {
+        task.dependsOn 'incrementVersion'
+    }
+}
+
+android {
+    namespace 'net.dev4u.webtoonbrowser'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "net.dev4u.webtoonbrowser"
+        minSdk 29
+        targetSdk 34
+        versionCode versionBuild + 1
+        versionName "${versionMajor}.${versionMinor}.${versionPatch}.${versionBuild + 1}"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            debuggable true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // APK 출력 파일명 변경
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach { output ->
+            def versionSuffix = "${versionMajor}.${versionMinor}.${versionPatch}.${versionBuild + 1}"
+            outputFileName = "pico-webtoon-webbrowser-${variant.buildType.name}-v${versionSuffix}.apk"
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.webkit:webkit:1.8.0'
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation 'com.google.android.material:material:1.10.0'
+}

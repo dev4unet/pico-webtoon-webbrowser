@@ -1,0 +1,98 @@
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*'  # v1.0.0, v1.0.1 등의 태그가 푸시될 때 실행
+
+jobs:
+  build:
+    name: Build APK and Create Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # 릴리스 생성 권한
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'microsoft'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Get APK file names
+        id: apk_files
+        run: |
+          DEBUG_APK=$(ls app/build/outputs/apk/debug/*.apk | head -1)
+          RELEASE_APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "debug_apk=$DEBUG_APK" >> $GITHUB_OUTPUT
+          echo "release_apk=$RELEASE_APK" >> $GITHUB_OUTPUT
+          echo "debug_apk_name=$(basename $DEBUG_APK)" >> $GITHUB_OUTPUT
+          echo "release_apk_name=$(basename $RELEASE_APK)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ## PICO Webtoon Browser ${{ github.ref_name }}
+
+            PICO 4 Ultra VR용 세로형 웹툰 브라우저
+
+            ### 주요 기능
+            - 세로로 긴 화면 (웹툰 보기 최적화)
+            - 다중 탭 지원
+            - 즐겨찾기 기능
+            - 홈페이지 설정
+            - 다크 테마
+
+            ### 설치 방법
+            1. PICO 4 Ultra를 PC에 연결
+            2. APK 파일 다운로드
+            3. `adb install -r <apk파일명>` 실행
+
+            ### 파일 설명
+            - **debug APK**: 디버깅 가능 (개발용)
+            - **release APK**: 최적화 및 서명됨 (배포용)
+
+            ---
+
+            빌드 날짜: ${{ github.event.head_commit.timestamp }}
+
+      - name: Upload Debug APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.apk_files.outputs.debug_apk }}
+          asset_name: ${{ steps.apk_files.outputs.debug_apk_name }}
+          asset_content_type: application/vnd.android.package-archive
+
+      - name: Upload Release APK to Release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.apk_files.outputs.release_apk }}
+          asset_name: ${{ steps.apk_files.outputs.release_apk_name }}
+          asset_content_type: application/vnd.android.package-archive

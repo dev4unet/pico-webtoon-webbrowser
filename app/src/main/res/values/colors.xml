@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="background_dark">#1A1A1A</color>
+    <color name="toolbar_bg">#212121</color>
+    <color name="tab_bar_bg">#1A1A1A</color>
+    <color name="tab_active_bg">#333333</color>
+    <color name="tab_inactive_bg">#252525</color>
+    <color name="text_primary">#E0E0E0</color>
+    <color name="text_secondary">#999999</color>
+    <color name="icon_tint">#B0B0B0</color>
+    <color name="progress_color">#4CAF50</color>
+    <color name="url_bar_bg">#2A2A2A</color>
+    <color name="bookmark_star">#FFD700</color>
+    <color name="divider">#333333</color>
+</resources>
