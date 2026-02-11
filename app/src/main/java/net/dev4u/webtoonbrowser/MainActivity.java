@@ -9,6 +9,7 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -41,6 +42,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    private static final String TAG = "PicoWebtoonBrowser";
     private static final String DEFAULT_HOME_URL = "https://blog.naver.com/dev4unet";
     private static final String PREFS_NAME = "webtoon_browser_prefs";
     private static final String BOOKMARKS_KEY = "bookmarks";
@@ -665,12 +667,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        Log.d(TAG, "dispatchKeyEvent: action=" + event.getAction()
+                + ", keyCode=" + event.getKeyCode()
+                + ", keyName=" + KeyEvent.keyCodeToString(event.getKeyCode())
+                + ", scanCode=" + event.getScanCode()
+                + ", source=0x" + Integer.toHexString(event.getSource()));
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        Log.d(TAG, "onKeyDown: keyCode=" + keyCode + ", keyName=" + KeyEvent.keyCodeToString(keyCode));
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
     public void onBackPressed() {
         WebView wv = getActiveWebView();
         if (wv != null && wv.canGoBack()) {
             wv.goBack();
         } else {
-            super.onBackPressed();
+            // 더 이상 뒤로갈 페이지가 없으면 앱을 종료하지 않고 현재 화면 유지
+            Log.d(TAG, "onBackPressed: No history, staying on current page");
         }
     }
 
