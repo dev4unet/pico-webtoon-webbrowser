@@ -147,11 +147,19 @@
         android:visibility="gone"
         android:progressTint="@color/progress_color" />
 
-    <!-- WebView container (FrameLayout to stack multiple WebViews for tabs) -->
-    <FrameLayout
-        android:id="@+id/webview_container"
+    <!-- SwipeRefreshLayout for pull-to-refresh -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <!-- WebView container (FrameLayout to stack multiple WebViews for tabs) -->
+        <FrameLayout
+            android:id="@+id/webview_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>
