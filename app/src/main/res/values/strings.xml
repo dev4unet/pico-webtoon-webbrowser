@@ -16,4 +16,26 @@
     <string name="bookmark_removed">즐겨찾기에서 삭제됨</string>
     <string name="no_bookmarks">저장된 즐겨찾기가 없습니다</string>
     <string name="tab_count">%d개 탭</string>
+
+    <!-- Menu -->
+    <string name="menu">메뉴</string>
+    <string name="settings">설정</string>
+    <string name="history">방문 이력</string>
+    <string name="no_history">방문 이력이 없습니다</string>
+    <string name="clear_history">이력 삭제</string>
+    <string name="history_cleared">방문 이력이 삭제되었습니다</string>
+
+    <!-- Settings -->
+    <string name="restore_tabs_on_startup">앱 시작 시 탭 복원</string>
+    <string name="restore_tabs_desc">앱 종료 시 열린 탭을 저장하고 시작 시 복원</string>
+    <string name="content_scaling_mode">컨텐츠 스케일링 모드</string>
+    <string name="webtoon_mode">웹툰 모드 (고정)</string>
+    <string name="news_mode">뉴스 모드 (반응형)</string>
+    <string name="max_history_count">최대 방문 이력 개수</string>
+    <string name="export_bookmarks">즐겨찾기 내보내기</string>
+    <string name="import_bookmarks">즐겨찾기 불러오기</string>
+    <string name="bookmarks_exported">즐겨찾기가 내보내기 되었습니다</string>
+    <string name="bookmarks_imported">즐겨찾기가 불러와졌습니다</string>
+    <string name="export_failed">내보내기 실패</string>
+    <string name="import_failed">불러오기 실패</string>
 </resources>
