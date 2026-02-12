@@ -43,11 +43,24 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "PicoWebtoonBrowser";
-    private static final String DEFAULT_HOME_URL = "https://blog.naver.com/dev4unet";
+    private static final String DEFAULT_HOME_URL = "https://s.dev4u.net/code";
     private static final String PREFS_NAME = "webtoon_browser_prefs";
     private static final String BOOKMARKS_KEY = "bookmarks";
     private static final String HOME_URL_KEY = "home_url";
+    private static final String TABS_KEY = "saved_tabs";
+    private static final String RESTORE_TABS_KEY = "restore_tabs";
+    private static final String SCALING_MODE_KEY = "scaling_mode";
+    private static final String HISTORY_KEY = "history";
+    private static final String MAX_HISTORY_KEY = "max_history";
+    private static final String SHOW_TABS_KEY = "show_tabs";
+    private static final String BOOKMARK_DISPLAY_KEY = "bookmark_display";
+    private static final String HISTORY_DISPLAY_KEY = "history_display";
+    private static final int DEFAULT_MAX_HISTORY = 100;
     private static final int FILE_CHOOSER_REQUEST = 1001;
+    private static final int EXPORT_BOOKMARKS_REQUEST = 1002;
+    private static final int IMPORT_BOOKMARKS_REQUEST = 1003;
+    private static final int EXPORT_SETTINGS_REQUEST = 1004;
+    private static final int IMPORT_SETTINGS_REQUEST = 1005;
 
     // UI elements
     private FrameLayout webviewContainer;
@@ -56,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnBack, btnForward, btnRefresh, btnHome;
     private ImageButton btnBookmark, btnBookmarksList, btnNewTab;
     private LinearLayout tabContainer;
+    private LinearLayout tabBarLayout;
+    private androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefresh;
 
     // Tab management
     private final List<TabInfo> tabs = new ArrayList<>();
@@ -89,16 +104,24 @@ public class MainActivity extends AppCompatActivity {
         initViews();
         setupNavigation();
 
-        // Create first tab
-        String intentUrl = null;
-        Intent intent = getIntent();
-        if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
-            Uri data = intent.getData();
-            if (data != null) {
-                intentUrl = data.toString();
-            }
+        // Restore tabs or create first tab
+        boolean restored = false;
+        if (prefs.getBoolean(RESTORE_TABS_KEY, false)) {
+            restored = restoreTabs();
         }
-        addNewTab(intentUrl != null ? intentUrl : getHomeUrl());
+
+        if (!restored) {
+            // Create first tab
+            String intentUrl = null;
+            Intent intent = getIntent();
+            if (intent != null && Intent.ACTION_VIEW.equals(intent.getAction())) {
+                Uri data = intent.getData();
+                if (data != null) {
+                    intentUrl = data.toString();
+                }
+            }
+            addNewTab(intentUrl != null ? intentUrl : getHomeUrl());
+        }
     }
 
     private void initViews() {
@@ -113,6 +136,21 @@ public class MainActivity extends AppCompatActivity {
         btnBookmarksList = findViewById(R.id.btn_bookmarks_list);
         btnNewTab = findViewById(R.id.btn_new_tab);
         tabContainer = findViewById(R.id.tab_container);
+        tabBarLayout = findViewById(R.id.tab_bar_layout);
+        swipeRefresh = findViewById(R.id.swipe_refresh);
+
+        // Setup swipe refresh
+        swipeRefresh.setOnRefreshListener(() -> {
+            WebView wv = getActiveWebView();
+            if (wv != null) {
+                wv.reload();
+            }
+            swipeRefresh.setRefreshing(false);
+        });
+
+        // Apply tab bar visibility
+        boolean showTabs = prefs.getBoolean(SHOW_TABS_KEY, true);
+        tabBarLayout.setVisibility(showTabs ? View.VISIBLE : View.GONE);
     }
 
     private void setupNavigation() {
@@ -145,7 +183,7 @@ public class MainActivity extends AppCompatActivity {
 
         btnBookmark.setOnClickListener(v -> toggleBookmark());
 
-        btnBookmarksList.setOnClickListener(v -> showBookmarksList());
+        btnBookmarksList.setOnClickListener(v -> showMainMenu());
 
         urlBar.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO ||
@@ -281,8 +319,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         settings.setSupportZoom(true);
@@ -290,6 +326,10 @@ public class MainActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setSupportMultipleWindows(true);
+
+        // Apply scaling mode
+        int scalingMode = prefs.getInt(SCALING_MODE_KEY, 0);
+        applyScalingMode(webView, scalingMode);
 
         String defaultUA = settings.getUserAgentString();
         settings.setUserAgentString(defaultUA + " PicoWebtoonBrowser/1.0");
@@ -332,6 +372,10 @@ public class MainActivity extends AppCompatActivity {
                     updateNavigationButtons();
                     updateBookmarkButton();
                 }
+
+                // Save to history
+                String title = view.getTitle();
+                saveHistory(title, url);
             }
         });
 
@@ -470,10 +514,17 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        int displayMode = prefs.getInt(BOOKMARK_DISPLAY_KEY, 0); // 0=타이틀만, 1=URL만, 2=타이틀+URL
         String[] titles = new String[bookmarks.size()];
         for (int i = 0; i < bookmarks.size(); i++) {
             BookmarkEntry b = bookmarks.get(i);
-            titles[i] = b.title + "\n" + b.url;
+            if (displayMode == 0) { // 타이틀만
+                titles[i] = b.title;
+            } else if (displayMode == 1) { // URL만
+                titles[i] = b.url;
+            } else { // 타이틀 + URL
+                titles[i] = b.title + "\n" + b.url;
+            }
         }
 
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
@@ -651,6 +702,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
         if (requestCode == FILE_CHOOSER_REQUEST) {
             if (fileUploadCallback != null) {
                 Uri[] results = null;
@@ -662,6 +714,129 @@ public class MainActivity extends AppCompatActivity {
                 }
                 fileUploadCallback.onReceiveValue(results);
                 fileUploadCallback = null;
+            }
+        } else if (requestCode == EXPORT_BOOKMARKS_REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    String jsonData = prefs.getString("export_data", "[]");
+                    android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(data.getData(), "w");
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(pfd.getFileDescriptor());
+                    fos.write(jsonData.getBytes());
+                    fos.close();
+                    pfd.close();
+                    prefs.edit().remove("export_data").apply();
+                    Toast.makeText(this, R.string.bookmarks_exported, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, R.string.export_failed, Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else if (requestCode == IMPORT_BOOKMARKS_REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(data.getData(), "r");
+                    java.io.FileInputStream fis = new java.io.FileInputStream(pfd.getFileDescriptor());
+                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(fis));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+                    fis.close();
+                    pfd.close();
+
+                    JSONArray arr = new JSONArray(sb.toString());
+                    List<BookmarkEntry> bookmarks = new ArrayList<>();
+                    for (int i = 0; i < arr.length(); i++) {
+                        JSONObject obj = arr.getJSONObject(i);
+                        bookmarks.add(new BookmarkEntry(obj.getString("title"), obj.getString("url")));
+                    }
+                    saveBookmarks(bookmarks);
+                    Toast.makeText(this, R.string.bookmarks_imported, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, R.string.import_failed, Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else if (requestCode == EXPORT_SETTINGS_REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    String jsonData = prefs.getString("export_settings_data", "{}");
+                    android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(data.getData(), "w");
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(pfd.getFileDescriptor());
+                    fos.write(jsonData.getBytes());
+                    fos.close();
+                    pfd.close();
+                    prefs.edit().remove("export_settings_data").apply();
+                    Toast.makeText(this, R.string.settings_exported, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, R.string.export_failed, Toast.LENGTH_SHORT).show();
+                }
+            }
+        } else if (requestCode == IMPORT_SETTINGS_REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+                try {
+                    android.os.ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(data.getData(), "r");
+                    java.io.FileInputStream fis = new java.io.FileInputStream(pfd.getFileDescriptor());
+                    java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(fis));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line);
+                    }
+                    reader.close();
+                    fis.close();
+                    pfd.close();
+
+                    JSONObject root = new JSONObject(sb.toString());
+
+                    // Import settings
+                    if (root.has("settings")) {
+                        JSONObject settings = root.getJSONObject("settings");
+                        SharedPreferences.Editor editor = prefs.edit();
+                        if (settings.has("restore_tabs")) editor.putBoolean(RESTORE_TABS_KEY, settings.getBoolean("restore_tabs"));
+                        if (settings.has("scaling_mode")) editor.putInt(SCALING_MODE_KEY, settings.getInt("scaling_mode"));
+                        if (settings.has("max_history")) editor.putInt(MAX_HISTORY_KEY, settings.getInt("max_history"));
+                        if (settings.has("show_tabs")) editor.putBoolean(SHOW_TABS_KEY, settings.getBoolean("show_tabs"));
+                        if (settings.has("bookmark_display")) editor.putInt(BOOKMARK_DISPLAY_KEY, settings.getInt("bookmark_display"));
+                        if (settings.has("history_display")) editor.putInt(HISTORY_DISPLAY_KEY, settings.getInt("history_display"));
+                        if (settings.has("home_url")) editor.putString(HOME_URL_KEY, settings.getString("home_url"));
+                        editor.apply();
+
+                        // Apply settings
+                        tabBarLayout.setVisibility(prefs.getBoolean(SHOW_TABS_KEY, true) ? View.VISIBLE : View.GONE);
+                        applyScalingModeToAllTabs();
+                    }
+
+                    // Import bookmarks
+                    if (root.has("bookmarks")) {
+                        JSONArray bookmarksArr = root.getJSONArray("bookmarks");
+                        List<BookmarkEntry> bookmarks = new ArrayList<>();
+                        for (int i = 0; i < bookmarksArr.length(); i++) {
+                            JSONObject obj = bookmarksArr.getJSONObject(i);
+                            bookmarks.add(new BookmarkEntry(obj.getString("title"), obj.getString("url")));
+                        }
+                        saveBookmarks(bookmarks);
+                    }
+
+                    // Import history
+                    if (root.has("history")) {
+                        JSONArray historyArr = root.getJSONArray("history");
+                        List<HistoryEntry> history = new ArrayList<>();
+                        for (int i = 0; i < historyArr.length(); i++) {
+                            JSONObject obj = historyArr.getJSONObject(i);
+                            history.add(new HistoryEntry(
+                                obj.getString("title"),
+                                obj.getString("url"),
+                                obj.optLong("timestamp", 0)));
+                        }
+                        // Save history
+                        prefs.edit().putString(HISTORY_KEY, historyArr.toString()).apply();
+                    }
+
+                    Toast.makeText(this, R.string.settings_imported, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    Toast.makeText(this, R.string.import_failed, Toast.LENGTH_SHORT).show();
+                }
             }
         }
     }
@@ -709,11 +884,504 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        // Save tabs if restore_tabs is enabled
+        if (prefs.getBoolean(RESTORE_TABS_KEY, false)) {
+            saveTabs();
+        }
+
         for (TabInfo tab : tabs) {
             tab.webView.stopLoading();
             tab.webView.destroy();
         }
         tabs.clear();
         super.onDestroy();
+    }
+
+    // ===================== Main Menu =====================
+
+    private void showMainMenu() {
+        String[] options = {
+            getString(R.string.bookmarks),
+            getString(R.string.history),
+            getString(R.string.settings)
+        };
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.menu)
+            .setItems(options, (dialog, which) -> {
+                switch (which) {
+                    case 0: // 즐겨찾기
+                        showBookmarksList();
+                        break;
+                    case 1: // 방문 이력
+                        showHistory();
+                        break;
+                    case 2: // 설정
+                        showSettings();
+                        break;
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    // ===================== Settings =====================
+
+    private void showSettings() {
+        String[] options = {
+            getString(R.string.restore_tabs_on_startup),
+            getString(R.string.content_scaling_mode),
+            getString(R.string.max_history_count),
+            getString(R.string.show_tabs_bar),
+            getString(R.string.bookmark_display_mode),
+            getString(R.string.history_display_mode),
+            getString(R.string.export_bookmarks),
+            getString(R.string.import_bookmarks),
+            getString(R.string.export_settings),
+            getString(R.string.import_settings),
+            getString(R.string.clear_history)
+        };
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.settings)
+            .setItems(options, (dialog, which) -> {
+                switch (which) {
+                    case 0: // 탭 복원 설정
+                        toggleRestoreTabs();
+                        break;
+                    case 1: // 스케일링 모드
+                        showScalingModeDialog();
+                        break;
+                    case 2: // 최대 기록 개수
+                        showMaxHistoryDialog();
+                        break;
+                    case 3: // 탭 바 표시
+                        toggleShowTabs();
+                        break;
+                    case 4: // 즐겨찾기 표시 방식
+                        showBookmarkDisplayDialog();
+                        break;
+                    case 5: // 방문 기록 표시 방식
+                        showHistoryDisplayDialog();
+                        break;
+                    case 6: // 즐겨찾기 내보내기
+                        exportBookmarks();
+                        break;
+                    case 7: // 즐겨찾기 불러오기
+                        importBookmarks();
+                        break;
+                    case 8: // 환경 설정 내보내기
+                        exportSettings();
+                        break;
+                    case 9: // 환경 설정 불러오기
+                        importSettings();
+                        break;
+                    case 10: // 기록 삭제
+                        clearHistory();
+                        break;
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void toggleRestoreTabs() {
+        boolean current = prefs.getBoolean(RESTORE_TABS_KEY, false);
+        prefs.edit().putBoolean(RESTORE_TABS_KEY, !current).apply();
+        Toast.makeText(this,
+            getString(R.string.restore_tabs_on_startup) + ": " + (!current ? "ON" : "OFF"),
+            Toast.LENGTH_SHORT).show();
+    }
+
+    private void showScalingModeDialog() {
+        String[] modes = {
+            getString(R.string.webtoon_mode),
+            getString(R.string.normal_mode)
+        };
+
+        int current = prefs.getInt(SCALING_MODE_KEY, 0);
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.content_scaling_mode)
+            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+                prefs.edit().putInt(SCALING_MODE_KEY, which).apply();
+                applyScalingModeToAllTabs();
+                Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void showMaxHistoryDialog() {
+        int current = prefs.getInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY);
+
+        EditText input = new EditText(this);
+        input.setText(String.valueOf(current));
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setSelectAllOnFocus(true);
+
+        int padding = (int) (16 * getResources().getDisplayMetrics().density);
+        FrameLayout container = new FrameLayout(this);
+        container.setPadding(padding, padding / 2, padding, 0);
+        container.addView(input);
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.max_history_count)
+            .setView(container)
+            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                try {
+                    int count = Integer.parseInt(input.getText().toString().trim());
+                    if (count > 0) {
+                        prefs.edit().putInt(MAX_HISTORY_KEY, count).apply();
+                        Toast.makeText(this, "최대 이력: " + count, Toast.LENGTH_SHORT).show();
+                    }
+                } catch (NumberFormatException e) {
+                    // Ignore
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void applyScalingModeToAllTabs() {
+        int mode = prefs.getInt(SCALING_MODE_KEY, 0);
+        for (TabInfo tab : tabs) {
+            applyScalingMode(tab.webView, mode);
+        }
+    }
+
+    private void applyScalingMode(WebView webView, int mode) {
+        WebSettings settings = webView.getSettings();
+        if (mode == 1) { // 일반 모드 (반응형)
+            settings.setUseWideViewPort(false);
+            settings.setLoadWithOverviewMode(false);
+            settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+        } else { // 웹툰 모드 (고정)
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+            settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+        }
+    }
+
+    private void toggleShowTabs() {
+        boolean current = prefs.getBoolean(SHOW_TABS_KEY, true);
+        prefs.edit().putBoolean(SHOW_TABS_KEY, !current).apply();
+        tabBarLayout.setVisibility(!current ? View.VISIBLE : View.GONE);
+        Toast.makeText(this,
+            getString(R.string.show_tabs_bar) + ": " + (!current ? "ON" : "OFF"),
+            Toast.LENGTH_SHORT).show();
+    }
+
+    private void showBookmarkDisplayDialog() {
+        String[] modes = {
+            getString(R.string.display_title_only),
+            getString(R.string.display_url_only),
+            getString(R.string.display_title_and_url)
+        };
+
+        int current = prefs.getInt(BOOKMARK_DISPLAY_KEY, 0); // 기본: 타이틀만
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.bookmark_display_mode)
+            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+                prefs.edit().putInt(BOOKMARK_DISPLAY_KEY, which).apply();
+                Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void showHistoryDisplayDialog() {
+        String[] modes = {
+            getString(R.string.display_title_only),
+            getString(R.string.display_url_only),
+            getString(R.string.display_title_and_url)
+        };
+
+        int current = prefs.getInt(HISTORY_DISPLAY_KEY, 0); // 기본: 타이틀만
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.history_display_mode)
+            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+                prefs.edit().putInt(HISTORY_DISPLAY_KEY, which).apply();
+                Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
+                dialog.dismiss();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    // ===================== History =====================
+
+    private void showHistory() {
+        List<HistoryEntry> history = loadHistory();
+
+        if (history.isEmpty()) {
+            Toast.makeText(this, R.string.no_history, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        int displayMode = prefs.getInt(HISTORY_DISPLAY_KEY, 0); // 0=타이틀만, 1=URL만, 2=타이틀+URL
+        String[] titles = new String[history.size()];
+        for (int i = 0; i < history.size(); i++) {
+            HistoryEntry h = history.get(i);
+            if (displayMode == 0) { // 타이틀만
+                titles[i] = h.title;
+            } else if (displayMode == 1) { // URL만
+                titles[i] = h.url;
+            } else { // 타이틀 + URL
+                titles[i] = h.title + "\n" + h.url;
+            }
+        }
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.history)
+            .setItems(titles, (dialog, which) -> {
+                WebView wv = getActiveWebView();
+                if (wv != null) {
+                    wv.loadUrl(history.get(which).url);
+                }
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void saveHistory(String title, String url) {
+        if (url == null || url.isEmpty() || url.equals("about:blank")) return;
+
+        List<HistoryEntry> history = loadHistory();
+
+        // Remove duplicates
+        history.removeIf(h -> h.url.equals(url));
+
+        // Add to front
+        history.add(0, new HistoryEntry(title != null ? title : url, url, System.currentTimeMillis()));
+
+        // Limit size
+        int maxHistory = prefs.getInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY);
+        while (history.size() > maxHistory) {
+            history.remove(history.size() - 1);
+        }
+
+        // Save
+        try {
+            JSONArray arr = new JSONArray();
+            for (HistoryEntry h : history) {
+                JSONObject obj = new JSONObject();
+                obj.put("title", h.title);
+                obj.put("url", h.url);
+                obj.put("timestamp", h.timestamp);
+                arr.put(obj);
+            }
+            prefs.edit().putString(HISTORY_KEY, arr.toString()).apply();
+        } catch (Exception e) {
+            // Ignore
+        }
+    }
+
+    private List<HistoryEntry> loadHistory() {
+        List<HistoryEntry> history = new ArrayList<>();
+        String json = prefs.getString(HISTORY_KEY, "[]");
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                history.add(new HistoryEntry(
+                    obj.getString("title"),
+                    obj.getString("url"),
+                    obj.optLong("timestamp", 0)));
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+        return history;
+    }
+
+    private void clearHistory() {
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.clear_history)
+            .setMessage("모든 방문 기록을 삭제하시겠습니까?")
+            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                prefs.edit().remove(HISTORY_KEY).apply();
+                Toast.makeText(this, R.string.history_cleared, Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    static class HistoryEntry {
+        String title;
+        String url;
+        long timestamp;
+
+        HistoryEntry(String title, String url, long timestamp) {
+            this.title = title;
+            this.url = url;
+            this.timestamp = timestamp;
+        }
+    }
+
+    // ===================== Tab Persistence =====================
+
+    private void saveTabs() {
+        try {
+            JSONArray arr = new JSONArray();
+            for (TabInfo tab : tabs) {
+                JSONObject obj = new JSONObject();
+                obj.put("title", tab.title);
+                obj.put("url", tab.url);
+                arr.put(obj);
+            }
+            prefs.edit().putString(TABS_KEY, arr.toString()).apply();
+        } catch (Exception e) {
+            // Ignore
+        }
+    }
+
+    private boolean restoreTabs() {
+        String json = prefs.getString(TABS_KEY, "[]");
+        try {
+            JSONArray arr = new JSONArray(json);
+            if (arr.length() == 0) return false;
+
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                String url = obj.getString("url");
+                if (url != null && !url.isEmpty()) {
+                    addNewTab(url);
+                }
+            }
+            return tabs.size() > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // ===================== Bookmarks Import/Export =====================
+
+    private void exportBookmarks() {
+        List<BookmarkEntry> bookmarks = loadBookmarks();
+        if (bookmarks.isEmpty()) {
+            Toast.makeText(this, R.string.no_bookmarks, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            JSONArray arr = new JSONArray();
+            for (BookmarkEntry b : bookmarks) {
+                JSONObject obj = new JSONObject();
+                obj.put("title", b.title);
+                obj.put("url", b.url);
+                arr.put(obj);
+            }
+
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_TITLE, "bookmarks.json");
+
+            // Store JSON data for later use
+            prefs.edit().putString("export_data", arr.toString()).apply();
+
+            startActivityForResult(intent, EXPORT_BOOKMARKS_REQUEST);
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.export_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void importBookmarks() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        startActivityForResult(intent, IMPORT_BOOKMARKS_REQUEST);
+    }
+
+    // ===================== Settings Import/Export =====================
+
+    private void exportSettings() {
+        View dialogView = LayoutInflater.from(this).inflate(android.R.layout.simple_list_item_multiple_choice, null);
+
+        String[] options = {
+            getString(R.string.include_bookmarks),
+            getString(R.string.include_history)
+        };
+
+        boolean[] checkedItems = {true, true}; // 기본: 모두 체크
+
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.export_settings)
+            .setMultiChoiceItems(options, checkedItems, (dialog, which, isChecked) -> {
+                checkedItems[which] = isChecked;
+            })
+            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                performExportSettings(checkedItems[0], checkedItems[1]);
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void performExportSettings(boolean includeBookmarks, boolean includeHistory) {
+        try {
+            JSONObject root = new JSONObject();
+
+            // Settings
+            JSONObject settings = new JSONObject();
+            settings.put("restore_tabs", prefs.getBoolean(RESTORE_TABS_KEY, false));
+            settings.put("scaling_mode", prefs.getInt(SCALING_MODE_KEY, 0));
+            settings.put("max_history", prefs.getInt(MAX_HISTORY_KEY, DEFAULT_MAX_HISTORY));
+            settings.put("show_tabs", prefs.getBoolean(SHOW_TABS_KEY, true));
+            settings.put("bookmark_display", prefs.getInt(BOOKMARK_DISPLAY_KEY, 0));
+            settings.put("history_display", prefs.getInt(HISTORY_DISPLAY_KEY, 0));
+            settings.put("home_url", prefs.getString(HOME_URL_KEY, DEFAULT_HOME_URL));
+            root.put("settings", settings);
+
+            // Bookmarks
+            if (includeBookmarks) {
+                JSONArray bookmarksArr = new JSONArray();
+                List<BookmarkEntry> bookmarks = loadBookmarks();
+                for (BookmarkEntry b : bookmarks) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("title", b.title);
+                    obj.put("url", b.url);
+                    bookmarksArr.put(obj);
+                }
+                root.put("bookmarks", bookmarksArr);
+            }
+
+            // History
+            if (includeHistory) {
+                JSONArray historyArr = new JSONArray();
+                List<HistoryEntry> history = loadHistory();
+                for (HistoryEntry h : history) {
+                    JSONObject obj = new JSONObject();
+                    obj.put("title", h.title);
+                    obj.put("url", h.url);
+                    obj.put("timestamp", h.timestamp);
+                    historyArr.put(obj);
+                }
+                root.put("history", historyArr);
+            }
+
+            Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("application/json");
+            intent.putExtra(Intent.EXTRA_TITLE, "pico-webtoon-settings.json");
+
+            // Store JSON data for later use
+            prefs.edit().putString("export_settings_data", root.toString()).apply();
+
+            startActivityForResult(intent, EXPORT_SETTINGS_REQUEST);
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.export_failed, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void importSettings() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/json");
+        startActivityForResult(intent, IMPORT_SETTINGS_REQUEST);
     }
 }

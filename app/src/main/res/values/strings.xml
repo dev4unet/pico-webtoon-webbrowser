@@ -16,4 +16,38 @@
     <string name="bookmark_removed">즐겨찾기에서 삭제됨</string>
     <string name="no_bookmarks">저장된 즐겨찾기가 없습니다</string>
     <string name="tab_count">%d개 탭</string>
+
+    <!-- Menu -->
+    <string name="menu">메뉴</string>
+    <string name="settings">설정</string>
+    <string name="history">방문 기록</string>
+    <string name="no_history">방문 기록이 없습니다</string>
+    <string name="clear_history">방문 기록 삭제</string>
+    <string name="history_cleared">방문 기록이 삭제되었습니다</string>
+
+    <!-- Settings -->
+    <string name="restore_tabs_on_startup">앱 시작 시 탭 복원</string>
+    <string name="restore_tabs_desc">앱 종료 시 열린 탭을 저장하고 시작 시 복원</string>
+    <string name="content_scaling_mode">컨텐츠 스케일링 모드</string>
+    <string name="webtoon_mode">웹툰 모드 (고정)</string>
+    <string name="normal_mode">일반 모드 (반응형)</string>
+    <string name="max_history_count">최대 방문 기록 개수</string>
+    <string name="show_tabs_bar">탭 바 표시</string>
+    <string name="bookmark_display_mode">즐겨찾기 표시 방식</string>
+    <string name="history_display_mode">방문 기록 표시 방식</string>
+    <string name="display_title_only">타이틀만</string>
+    <string name="display_url_only">URL만</string>
+    <string name="display_title_and_url">타이틀 + URL</string>
+    <string name="export_bookmarks">즐겨찾기 내보내기</string>
+    <string name="import_bookmarks">즐겨찾기 불러오기</string>
+    <string name="export_settings">환경 설정 내보내기</string>
+    <string name="import_settings">환경 설정 불러오기</string>
+    <string name="include_bookmarks">즐겨찾기 포함</string>
+    <string name="include_history">방문 기록 포함</string>
+    <string name="bookmarks_exported">즐겨찾기가 내보내기 되었습니다</string>
+    <string name="bookmarks_imported">즐겨찾기가 불러와졌습니다</string>
+    <string name="settings_exported">환경 설정이 내보내기 되었습니다</string>
+    <string name="settings_imported">환경 설정이 불러와졌습니다</string>
+    <string name="export_failed">내보내기 실패</string>
+    <string name="import_failed">불러오기 실패</string>
 </resources>
