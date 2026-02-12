@@ -2,23 +2,57 @@ plugins {
     id 'com.android.application'
 }
 
-// 버전 자동 증가: version.properties 파일에서 빌드 번호 관리
+// Git 태그 기반 버전 관리
+def getVersionFromGit() {
+    try {
+        // 현재 HEAD가 태그를 가리키는지 확인 (릴리스 빌드)
+        def isReleaseProcess = 'git describe --exact-match --tags HEAD'.execute()
+        isReleaseProcess.waitForProcessOutput(new StringBuffer(), new StringBuffer())
+        def isRelease = isReleaseProcess.exitValue() == 0
+
+        // 가장 최근 태그 가져오기
+        def latestTagProcess = 'git describe --tags --abbrev=0'.execute()
+        def latestTag = new StringBuffer()
+        latestTagProcess.waitForProcessOutput(latestTag, new StringBuffer())
+        def tag = latestTag.toString().trim()
+
+        if (tag.startsWith('v')) {
+            tag = tag.substring(1) // v 접두사 제거
+        }
+
+        def versionParts = tag.tokenize('.').collect { it.toInteger() }
+        def major = versionParts[0]
+        def minor = versionParts.size() > 1 ? versionParts[1] : 0
+        def patch = versionParts.size() > 2 ? versionParts[2] : 0
+
+        if (!isRelease) {
+            // 개발 중: PATCH+1 + "-dev"
+            patch++
+            return [major, minor, patch, '-dev', true]
+        } else {
+            // 릴리스: 태그 그대로
+            return [major, minor, patch, '', false]
+        }
+    } catch (Exception e) {
+        // Git 태그가 없는 경우 기본값
+        println "Warning: Could not get version from git tags, using default 0.1.0-dev"
+        return [0, 1, 0, '-dev', true]
+    }
+}
+
+def (versionMajor, versionMinor, versionPatch, versionSuffix, isDev) = getVersionFromGit()
+
+// VERSION_BUILD만 version.properties에서 읽기 (versionCode용)
 def versionPropsFile = file('version.properties')
-def versionBuild = 0
-def versionMajor = 1
-def versionMinor = 0
-def versionPatch = 0
+def versionBuild = 1
 
 if (versionPropsFile.canRead()) {
     def versionProps = new Properties()
     versionProps.load(new FileInputStream(versionPropsFile))
-    versionBuild = versionProps['VERSION_BUILD'].toInteger()
-    versionMajor = versionProps['VERSION_MAJOR'].toInteger()
-    versionMinor = versionProps['VERSION_MINOR'].toInteger()
-    versionPatch = versionProps['VERSION_PATCH'].toInteger()
+    versionBuild = versionProps['VERSION_BUILD']?.toInteger() ?: 1
 }
 
-// 빌드할 때마다 빌드 번호 증가
+// 빌드할 때마다 빌드 번호 증가 (VERSION_BUILD만 관리)
 tasks.register('incrementVersion') {
     doLast {
         def versionProps = new Properties()
@@ -28,9 +62,6 @@ tasks.register('incrementVersion') {
         def build = versionProps['VERSION_BUILD']?.toInteger() ?: 0
         build++
         versionProps['VERSION_BUILD'] = build.toString()
-        versionProps['VERSION_MAJOR'] = (versionProps['VERSION_MAJOR'] ?: '1')
-        versionProps['VERSION_MINOR'] = (versionProps['VERSION_MINOR'] ?: '0')
-        versionProps['VERSION_PATCH'] = (versionProps['VERSION_PATCH'] ?: '0')
         versionProps.store(versionPropsFile.newWriter(), null)
     }
 }
@@ -49,8 +80,8 @@ android {
         applicationId "net.dev4u.webtoonbrowser"
         minSdk 29
         targetSdk 34
-        versionCode versionBuild + 1
-        versionName "${versionMajor}.${versionMinor}.${versionPatch}.${versionBuild + 1}"
+        versionCode versionBuild
+        versionName "${versionMajor}.${versionMinor}.${versionPatch}${versionSuffix}"
     }
 
     signingConfigs {
@@ -83,11 +114,12 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // APK 출력 파일명 변경
+    // APK 출력 파일명 변경 (버전 + 빌드 시간)
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
-            def versionSuffix = "${versionMajor}.${versionMinor}.${versionPatch}.${versionBuild + 1}"
-            outputFileName = "pico-webtoon-webbrowser-${variant.buildType.name}-v${versionSuffix}.apk"
+            def buildTime = new Date().format('yyyyMMdd-HHmmss')
+            def versionStr = "${versionMajor}.${versionMinor}.${versionPatch}${versionSuffix}"
+            outputFileName = "pico-webtoon-webbrowser-${variant.buildType.name}-v${versionStr}-${buildTime}.apk"
         }
     }
 }
