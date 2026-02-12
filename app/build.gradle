@@ -53,14 +53,28 @@ android {
         versionName "${versionMajor}.${versionMinor}.${versionPatch}.${versionBuild + 1}"
     }
 
-    buildTypes {
+    signingConfigs {
+        debug {
+            // 자동으로 ~/.android/debug.keystore 사용 (공유 keystore)
+        }
         release {
+            // GitHub Actions에서 release.keystore를 프로젝트 루트에 디코딩
+            storeFile file('../release.keystore')
+            storePassword System.getenv("RELEASE_STORE_PASSWORD") ?: "picowebtoon2026!"
+            keyAlias System.getenv("RELEASE_KEY_ALIAS") ?: "picowebtoonkey"
+            keyPassword System.getenv("RELEASE_KEY_PASSWORD") ?: "picowebtoon2026!"
+        }
+    }
+
+    buildTypes {
+        debug {
             signingConfig signingConfigs.debug
+            debuggable true
+        }
+        release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-        debug {
-            debuggable true
         }
     }
 
