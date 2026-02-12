@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
@@ -56,6 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String BOOKMARK_DISPLAY_KEY = "bookmark_display";
     private static final String HISTORY_DISPLAY_KEY = "history_display";
     private static final int DEFAULT_MAX_HISTORY = 100;
+    private static final String DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int EXPORT_BOOKMARKS_REQUEST = 1002;
     private static final int IMPORT_BOOKMARKS_REQUEST = 1003;
@@ -327,12 +329,9 @@ public class MainActivity extends AppCompatActivity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setSupportMultipleWindows(true);
 
-        // Apply scaling mode
+        // Apply browser mode (UA + viewport settings)
         int scalingMode = prefs.getInt(SCALING_MODE_KEY, 0);
         applyScalingMode(webView, scalingMode);
-
-        String defaultUA = settings.getUserAgentString();
-        settings.setUserAgentString(defaultUA + " PicoWebtoonBrowser/1.0");
 
         CookieManager cookieManager = CookieManager.getInstance();
         cookieManager.setAcceptCookie(true);
@@ -376,6 +375,9 @@ public class MainActivity extends AppCompatActivity {
                 // Save to history
                 String title = view.getTitle();
                 saveHistory(title, url);
+
+                // Inject viewport for browser mode
+                injectViewportForMode(view);
             }
         });
 
@@ -900,9 +902,24 @@ public class MainActivity extends AppCompatActivity {
     // ===================== Main Menu =====================
 
     private void showMainMenu() {
+        boolean showTabs = prefs.getBoolean(SHOW_TABS_KEY, true);
+        String tabToggleLabel = getString(R.string.show_tabs_bar) + ": " + (showTabs ? "ON" : "OFF");
+        boolean restoreTabs = prefs.getBoolean(RESTORE_TABS_KEY, false);
+        String restoreLabel = getString(R.string.restore_tabs_on_startup) + ": " + (restoreTabs ? "ON" : "OFF");
+
+        int currentMode = prefs.getInt(SCALING_MODE_KEY, 0);
+        String[] modeNames = {
+            getString(R.string.webtoon_mode),
+            getString(R.string.pc_desktop_mode)
+        };
+        String browserModeLabel = getString(R.string.browser_mode) + ": " + modeNames[Math.min(currentMode, 1)];
+
         String[] options = {
             getString(R.string.bookmarks),
             getString(R.string.history),
+            browserModeLabel,
+            restoreLabel,
+            tabToggleLabel,
             getString(R.string.settings)
         };
 
@@ -913,10 +930,19 @@ public class MainActivity extends AppCompatActivity {
                     case 0: // 즐겨찾기
                         showBookmarksList();
                         break;
-                    case 1: // 방문 이력
+                    case 1: // 방문 기록
                         showHistory();
                         break;
-                    case 2: // 설정
+                    case 2: // 브라우저 모드
+                        showScalingModeDialog();
+                        break;
+                    case 3: // 탭 복원
+                        toggleRestoreTabs();
+                        break;
+                    case 4: // 탭 바 표시/숨김
+                        toggleShowTabs();
+                        break;
+                    case 5: // 설정
                         showSettings();
                         break;
                 }
@@ -929,10 +955,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void showSettings() {
         String[] options = {
-            getString(R.string.restore_tabs_on_startup),
-            getString(R.string.content_scaling_mode),
             getString(R.string.max_history_count),
-            getString(R.string.show_tabs_bar),
             getString(R.string.bookmark_display_mode),
             getString(R.string.history_display_mode),
             getString(R.string.export_bookmarks),
@@ -946,37 +969,28 @@ public class MainActivity extends AppCompatActivity {
             .setTitle(R.string.settings)
             .setItems(options, (dialog, which) -> {
                 switch (which) {
-                    case 0: // 탭 복원 설정
-                        toggleRestoreTabs();
-                        break;
-                    case 1: // 스케일링 모드
-                        showScalingModeDialog();
-                        break;
-                    case 2: // 최대 기록 개수
+                    case 0: // 최대 기록 개수
                         showMaxHistoryDialog();
                         break;
-                    case 3: // 탭 바 표시
-                        toggleShowTabs();
-                        break;
-                    case 4: // 즐겨찾기 표시 방식
+                    case 1: // 즐겨찾기 표시 방식
                         showBookmarkDisplayDialog();
                         break;
-                    case 5: // 방문 기록 표시 방식
+                    case 2: // 방문 기록 표시 방식
                         showHistoryDisplayDialog();
                         break;
-                    case 6: // 즐겨찾기 내보내기
+                    case 3: // 즐겨찾기 내보내기
                         exportBookmarks();
                         break;
-                    case 7: // 즐겨찾기 불러오기
+                    case 4: // 즐겨찾기 불러오기
                         importBookmarks();
                         break;
-                    case 8: // 환경 설정 내보내기
+                    case 5: // 환경 설정 내보내기
                         exportSettings();
                         break;
-                    case 9: // 환경 설정 불러오기
+                    case 6: // 환경 설정 불러오기
                         importSettings();
                         break;
-                    case 10: // 기록 삭제
+                    case 7: // 기록 삭제
                         clearHistory();
                         break;
                 }
@@ -996,13 +1010,13 @@ public class MainActivity extends AppCompatActivity {
     private void showScalingModeDialog() {
         String[] modes = {
             getString(R.string.webtoon_mode),
-            getString(R.string.normal_mode)
+            getString(R.string.pc_desktop_mode)
         };
 
         int current = prefs.getInt(SCALING_MODE_KEY, 0);
 
         new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
-            .setTitle(R.string.content_scaling_mode)
+            .setTitle(R.string.browser_mode)
             .setSingleChoiceItems(modes, current, (dialog, which) -> {
                 prefs.edit().putInt(SCALING_MODE_KEY, which).apply();
                 applyScalingModeToAllTabs();
@@ -1048,20 +1062,60 @@ public class MainActivity extends AppCompatActivity {
         int mode = prefs.getInt(SCALING_MODE_KEY, 0);
         for (TabInfo tab : tabs) {
             applyScalingMode(tab.webView, mode);
+            tab.webView.reload();
         }
     }
 
     private void applyScalingMode(WebView webView, int mode) {
         WebSettings settings = webView.getSettings();
-        if (mode == 1) { // 일반 모드 (반응형)
-            settings.setUseWideViewPort(false);
-            settings.setLoadWithOverviewMode(false);
-            settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
-        } else { // 웹툰 모드 (고정)
-            settings.setUseWideViewPort(true);
-            settings.setLoadWithOverviewMode(true);
-            settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+        String mobileUA = settings.getUserAgentString().replaceAll("\\s*PicoWebtoonBrowser/\\S+", "");
+        if (mobileUA.contains("Windows NT")) {
+            mobileUA = WebSettings.getDefaultUserAgent(this);
         }
+
+        switch (mode) {
+            case 1: // PC 모드 (데스크톱) - 데스크톱 UA + 넓은 viewport + 가로 화면
+                settings.setUseWideViewPort(true);
+                settings.setLoadWithOverviewMode(true);
+                settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+                settings.setTextZoom(100);
+                settings.setUserAgentString(DESKTOP_UA + " PicoWebtoonBrowser/1.0");
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+                break;
+            default: // 웹툰 모드 (모바일/세로) - 원래 형태
+                settings.setUseWideViewPort(false);
+                settings.setLoadWithOverviewMode(false);
+                settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+                settings.setTextZoom(100);
+                settings.setUserAgentString(mobileUA + " PicoWebtoonBrowser/1.0");
+                setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                break;
+        }
+    }
+
+    private void injectViewportForMode(WebView webView) {
+        int scalingMode = prefs.getInt(SCALING_MODE_KEY, 0);
+
+        StringBuilder js = new StringBuilder();
+        js.append("(function() {");
+
+        if (scalingMode == 1) {
+            // PC 모드: 넓은 viewport 주입으로 데스크톱 레이아웃 강제
+            js.append("var meta = document.querySelector('meta[name=viewport]');");
+            js.append("if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }");
+            js.append("meta.setAttribute('content', 'width=1024, user-scalable=yes');");
+        }
+
+        // 웹툰/일반 모드: CSS 변경 없음 (원래 페이지 그대로)
+        // PC 모드도 CSS transform 불필요 (viewport 변경으로 충분)
+        js.append("document.body.style.transform = '';");
+        js.append("document.body.style.transformOrigin = '';");
+        js.append("document.body.style.width = '';");
+
+        js.append("window.dispatchEvent(new Event('resize'));");
+        js.append("})();");
+
+        webView.evaluateJavascript(js.toString(), null);
     }
 
     private void toggleShowTabs() {
@@ -1280,7 +1334,7 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("application/json");
-            intent.putExtra(Intent.EXTRA_TITLE, "bookmarks.json");
+            intent.putExtra(Intent.EXTRA_TITLE, "pico-webtoon-bookmarks.json");
 
             // Store JSON data for later use
             prefs.edit().putString("export_data", arr.toString()).apply();

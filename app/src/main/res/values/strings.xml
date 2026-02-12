@@ -29,8 +29,10 @@
     <string name="restore_tabs_on_startup">앱 시작 시 탭 복원</string>
     <string name="restore_tabs_desc">앱 종료 시 열린 탭을 저장하고 시작 시 복원</string>
     <string name="content_scaling_mode">컨텐츠 스케일링 모드</string>
-    <string name="webtoon_mode">웹툰 모드 (고정)</string>
+    <string name="webtoon_mode">웹툰 모드 (모바일)</string>
     <string name="normal_mode">일반 모드 (반응형)</string>
+    <string name="pc_desktop_mode">PC 모드 (데스크톱)</string>
+    <string name="browser_mode">브라우저 모드</string>
     <string name="max_history_count">최대 방문 기록 개수</string>
     <string name="show_tabs_bar">탭 바 표시</string>
     <string name="bookmark_display_mode">즐겨찾기 표시 방식</string>
