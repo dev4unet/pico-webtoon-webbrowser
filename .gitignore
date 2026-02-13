@@ -33,3 +33,8 @@ keystore.properties
 
 # Temporary files
 nul
+
+# Claude AI (keep private)
+CLAUDE.md
+.claude/
+.ai_context.md
