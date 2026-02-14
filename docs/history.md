@@ -18,7 +18,7 @@
 
 ### 문서 현행화 및 v0.2.1 릴리스
 
-- architecture.md, README.md, history.md, 개발현황.md 현행화
+- architecture.md, README.md, history.md 현행화
 - v0.2.1 태그 생성 및 릴리스
 
 ---
@@ -91,7 +91,7 @@
 
 ### 프로젝트 분석 및 환경 조사
 
-- 요청사항 분석: PICO 4 Ultra VR용 세로형 웹툰 브라우저 개발
+- 최소 기능 분석: PICO 4 Ultra VR용 세로형 웹툰 브라우저 개발
 - 개발 환경 확인:
   - JDK 17 설치 확인
   - Android SDK (platform 34, build-tools 34.0.0) 설치 확인
@@ -108,7 +108,7 @@
 - 세로형 구현 방법: `resizeableActivity="false"` + `maxAspectRatio="5.0"` + `screenOrientation="portrait"`
 - 기본 홈페이지 설정
 - 프로젝트 구조 및 전체 구현 계획 설계 완료
-- 추가 요구사항 확인: 탭 기능, 즐겨찾기 기능, 스마트폰 테스트
+- 필요시 추가할 기능: 탭 기능, 즐겨찾기 기능, 스마트폰 테스트
 
 ### Gradle Wrapper 부트스트랩 및 빌드 설정
 
@@ -156,7 +156,7 @@
 - `gradlew.bat assembleDebug` 빌드 성공 (1분 47초)
   - 경고: deprecated API 사용 (onBackPressed) - 기능에는 영향 없음
 - APK 경로: `app/build/outputs/apk/debug/app-debug.apk`
-- 연결된 스마트폰(R3CY10SB8SM) 확인
+- 연결된 스마트폰 확인
 - `adb install -r` 설치 성공
 - `adb shell am start` 앱 실행 성공
 - **테스트 결과**:
@@ -169,7 +169,7 @@
   - 즐겨찾기 목록 (≡버튼) ✓ → 다이얼로그에 저장된 항목 표시
   - 홈 버튼 ✓ → 홈페이지로 복귀
   - Intent로 URL 전달 (am start -d URL) ✓ → Naver 로딩 성공
-- 스크린샷 10장 screenshots/ 폴더에 저장
+
 
 ### 문서 작성
 
@@ -184,32 +184,24 @@
 
 ### Git 저장소 연결 및 패키지명/APK명/버전 변경
 
-- Git 초기화 및 SSH 원격 저장소 연결: `git@github.com:dev4unet/pico-webtoon-webbrowser.git`
 - .gitignore 생성 (build/, .gradle/, local.properties, *.apk, screenshots/)
-- **패키지명 변경**: `com.picowebtoon.browser` → `net.dev4u.webtoonbrowser`
-  - app/build.gradle namespace/applicationId 변경
-  - Java 소스 파일 경로 이동: `java/com/picowebtoon/browser/` → `java/net/dev4u/webtoonbrowser/`
-  - package 선언 변경
 - **APK 파일명 변경**: `app-debug.apk` → `pico-webtoon-webbrowser-{buildType}-v{version}.apk`
   - applicationVariants.configureEach로 outputFileName 커스텀
 - **버전 자동 증가**: `app/version.properties` + `incrementVersion` 태스크
   - 빌드마다 VERSION_BUILD 자동 증가
   - versionCode/versionName에 반영
   - 업데이트 설치 시 기존 데이터 보존
-- 기존 앱(com.picowebtoon.browser) 디바이스에서 제거
 - clean 빌드 성공: `pico-webtoon-webbrowser-debug-v1.0.0.1.apk` 생성
 - 새 패키지로 디바이스 설치 및 실행 확인
 
 ### 문서 작성 및 Git 커밋
 
-- `.ai_context.md` 작성 (다른 세션용 전체 컨텍스트 문서)
 - `README.md` 업데이트 (변경된 패키지명, APK명, 버전 정보 반영)
 - `진행내역.md` 업데이트
 - Git 초기 커밋 및 원격 저장소 푸시
 
 ### 기능 개선 및 PICO 설치
 
-- **기본 홈페이지 변경**: `https://blog.naver.com/dev4unet`로 설정
 - **홈페이지 설정 기능 추가** (홈 버튼 길게 누르기):
   - 현재 페이지를 홈으로 설정
   - URL 직접 입력으로 홈 변경
@@ -219,5 +211,4 @@
   - `maxWidth` 속성은 LinearLayout에서 동작하지 않는 문제 발견
   - `refreshTabBar()`에서 프로그래밍적으로 160dp 최대 너비 제한 적용
   - 타이틀이 길거나 없는 경우에도 닫기 버튼(X) 항상 표시
-- PICO 4 Ultra(PA9270MGJ8280057G) 디바이스에 v1.0.0.2 빌드 설치 및 실행 확인
-- 문서 업데이트 및 Git 커밋
+- PICO 4 Ultra 디바이스에 v1.0.0.2 빌드 설치 및 실행 확인

@@ -2,7 +2,7 @@
 
 > 마지막 업데이트: 2026-02-14
 > 이 문서는 앱의 전체 구조와 핵심 설계 결정을 기록합니다.
-> 코드 수정 전 반드시 참고하여 기존 기능이 깨지지 않도록 합니다.
+> 기능 추가/변경 시 본 문서도 함께 수정하여 현행화합니다.
 
 ---
 
@@ -56,6 +56,7 @@ MainActivity (AppCompatActivity)
 ### 1. Single Activity 구조
 
 **결정**: 전체 앱을 `MainActivity.java` 하나로 구현
+
 **이유**:
 - 단순한 브라우저 앱에 Fragment/Navigation 불필요
 - PICO VR 환경에서 Activity 전환 시 윈도우 깜빡임 방지
@@ -64,6 +65,7 @@ MainActivity (AppCompatActivity)
 ### 2. 탭 관리: List + FrameLayout
 
 **결정**: `List<TabInfo>`로 탭을 관리하고, 모든 WebView를 `FrameLayout`에 겹쳐 배치
+
 **이유**:
 - WebView를 매번 생성/파괴하면 로딩 지연 발생
 - visibility 전환으로 즉시 탭 전환 가능
@@ -81,6 +83,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 ### 3. 브라우저 모드 시스템 (2모드)
 
 **결정**: UA(User-Agent) + viewport + 화면 방향 조합으로 2가지 모드 구현
+
 **이유**:
 - WebSettings만으로는 PICO VR에서 시각적 차이가 없음 (실기 테스트 확인)
 - 모바일 UA → 웹툰 사이트가 모바일 레이아웃 제공
@@ -107,6 +110,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 ### 4. 데이터 저장: SharedPreferences + JSON
 
 **결정**: 모든 데이터를 SharedPreferences에 JSON 문자열로 저장
+
 **이유**:
 - SQLite나 Room은 단순 목록 데이터에 오버스펙
 - JSON으로 직렬화하면 내보내기/가져오기가 간편
@@ -131,6 +135,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 ### 5. 메뉴 구조: 2단계 다이얼로그
 
 **결정**: AlertDialog 기반 2단계 메뉴 (메인 메뉴 → 설정)
+
 **이유**:
 - Android Menu/ActionBar는 PICO VR에서 접근성 낮음
 - 다이얼로그는 VR 플로팅 윈도우에서도 정상 표시
@@ -158,6 +163,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 ### 6. 다이얼로그 UI 패턴
 
 **결정**: 모든 다이얼로그 최대 너비 400dp 제한 + 서브 다이얼로그에 "뒤로" 네비게이션
+
 **이유**:
 - PC모드(가로)에서 MATCH_PARENT 다이얼로그가 너무 넓어 사용성 저하
 - 서브 다이얼로그에서 "취소"만 있으면 메인 메뉴로 돌아갈 수 없어 불편
