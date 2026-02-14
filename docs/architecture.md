@@ -88,7 +88,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 - WebSettings만으로는 PICO VR에서 시각적 차이가 없음 (실기 테스트 확인)
 - 모바일 UA → 웹툰 사이트가 모바일 레이아웃 제공
 - 데스크톱 UA + 동적 viewport → 데스크톱 레이아웃 + 창 크기 반응
-- 일반 세로 모드는 가독성 불량으로 제거됨 (v0.3.0)
+- 일반 세로 모드는 가독성 불량으로 제거됨
 
 **모드별 설정**:
 
@@ -250,9 +250,9 @@ app/src/main/
 | JDK | 17 LTS (JDK 21은 빌드 이슈) |
 | Gradle | 8.4 |
 | AGP | 8.2.0 |
-| minSdk | PICO 4 Ultra 호환 |
+| minSdk | 29 (PICO 4 Ultra 호환) |
 | CI/CD | GitHub Actions (자동 빌드/릴리스) |
-| 서명 | 공유 debug keystore (환경 간 일관성) |
+| 서명 | 공유 keystore (Debug + Release, 환경 간 일관성) |
 
 ---
 
@@ -264,3 +264,4 @@ app/src/main/
 | 2026-02-13 | 브라우저 모드 3모드→2모드 변경, 동적 viewport 도입 |
 | 2026-02-14 | PC모드 페이지 줌 기능 추가 (50%~100%), SharedPreferences 키 추가 |
 | 2026-02-14 | 다이얼로그 UI 패턴 추가 (400dp 최대 너비, 뒤로가기 네비게이션) |
+| 2026-02-14 | 빌드 환경 현행화 (minSdk 29, 공유 keystore 설명 보완), 모드 버전 참조 수정 |

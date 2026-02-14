@@ -29,86 +29,44 @@ git push origin v1.0.1
 
 https://github.com/dev4unet/pico-webtoon-webbrowser/releases 에서 확인 가능
 
-## 릴리스 APK 서명 설정 (선택사항)
+## 릴리스 APK 서명 설정
 
-현재는 디버그 서명으로 릴리스 APK가 빌드됩니다. 프로덕션 배포를 위해서는 별도의 서명 키가 필요합니다.
+이 프로젝트는 Debug와 Release 각각 별도의 keystore로 서명하며, GitHub Actions에서 자동으로 처리됩니다.
 
-### 1. Keystore 생성
+### 서명 구조
 
-```bash
-keytool -genkey -v -keystore pico-webtoon-webbrowser.keystore -alias pico-webtoon -keyalg RSA -keysize 2048 -validity 10000
-```
+| 빌드 타입 | Keystore | 용도 |
+|-----------|----------|------|
+| Debug | `~/.android/debug.keystore` (공유) | 개발/테스트용 |
+| Release | `release.keystore` (프로젝트 루트) | 배포용 |
 
-입력 정보:
-- Password: 안전한 비밀번호 입력 (기억 필수!)
-- Name: dev4unet 또는 회사명
-- Organization: dev4u.net
-- City, State, Country: 적절히 입력
+### GitHub Secrets 설정
 
-### 2. GitHub Secrets 설정
+포크(Fork) 후 GitHub Actions 빌드를 사용하려면 저장소의 **Settings → Secrets → Actions**에서 다음 Secret을 설정하세요:
 
-https://github.com/dev4unet/pico-webtoon-webbrowser/settings/secrets/actions 에서:
-
-1. `KEYSTORE_FILE`: keystore 파일을 Base64로 인코딩한 값
+1. `DEBUG_KEYSTORE_BASE64`: debug.keystore를 Base64로 인코딩한 값
+2. `RELEASE_KEYSTORE_BASE64`: release.keystore를 Base64로 인코딩한 값
    ```bash
    # Windows (PowerShell)
-   [Convert]::ToBase64String([IO.File]::ReadAllBytes("pico-webtoon-webbrowser.keystore"))
+   [Convert]::ToBase64String([IO.File]::ReadAllBytes("release.keystore"))
 
    # Linux/Mac
-   base64 pico-webtoon-webbrowser.keystore | tr -d '\n'
+   base64 release.keystore | tr -d '\n'
    ```
+3. `RELEASE_STORE_PASSWORD`: release keystore 비밀번호
+4. `RELEASE_KEY_ALIAS`: release key alias
+5. `RELEASE_KEY_PASSWORD`: release key 비밀번호
 
-2. `KEYSTORE_PASSWORD`: keystore 비밀번호
-3. `KEY_ALIAS`: pico-webtoon
-4. `KEY_PASSWORD`: 키 비밀번호
+### Keystore 신규 생성 (포크 시)
 
-### 3. build.gradle 업데이트
+포크한 프로젝트에서 자체 서명을 사용하려면:
 
-`app/build.gradle`의 `buildTypes` 섹션에 서명 설정 추가:
-
-```gradle
-android {
-    signingConfigs {
-        release {
-            // GitHub Actions에서 사용할 서명 설정
-            if (System.getenv("KEYSTORE_FILE")) {
-                def keystoreFile = file("../keystore.jks")
-                storeFile keystoreFile
-                storePassword System.getenv("KEYSTORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
-            }
-        }
-    }
-
-    buildTypes {
-        release {
-            signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
-}
+```bash
+keytool -genkey -v -keystore release.keystore -alias mykey -keyalg RSA -keysize 2048 -validity 10000
 ```
 
-### 4. GitHub Actions workflow 업데이트
-
-`.github/workflows/release.yml`에 keystore 디코딩 단계 추가:
-
-```yaml
-- name: Decode Keystore
-  env:
-    KEYSTORE_BASE64: ${{ secrets.KEYSTORE_FILE }}
-  run: |
-    echo $KEYSTORE_BASE64 | base64 -d > keystore.jks
-
-- name: Build Release APK
-  env:
-    KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-    KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-    KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-  run: ./gradlew assembleRelease --no-daemon
-```
+생성한 keystore를 프로젝트 루트에 두면 로컬 Release 빌드가 가능합니다.
+`app/build.gradle`의 `signingConfigs.release`에서 keyAlias와 비밀번호를 환경변수 또는 기본값으로 수정하세요.
 
 ## 로컬 빌드
 
@@ -117,10 +75,12 @@ android {
 ./gradlew assembleDebug
 ```
 
-### Release 빌드 (서명 없이)
+### Release 빌드
 ```bash
 ./gradlew assembleRelease
 ```
+
+**참고**: Release 빌드는 프로젝트 루트에 `release.keystore` 파일이 필요합니다. 파일이 없으면 빌드가 실패합니다. Keystore 설정은 위의 "릴리스 APK 서명 설정" 섹션을 참고하세요.
 
 빌드된 APK 위치:
 - Debug: `app/build/outputs/apk/debug/pico-webtoon-webbrowser-debug-v*.apk`
@@ -128,23 +88,27 @@ android {
 
 ## 버전 관리
 
-버전은 `app/version.properties` 파일에서 관리됩니다:
+버전은 **Git 태그** 기반으로 관리됩니다:
 
-```properties
-VERSION_MAJOR=1  # 주요 버전 (Breaking Changes)
-VERSION_MINOR=0  # 기능 추가
-VERSION_PATCH=0  # 버그 수정
-VERSION_BUILD=7  # 자동 증가 (빌드할 때마다)
+```bash
+# 현재 버전 확인 (가장 최근 태그)
+git describe --tags --abbrev=0
+
+# 새 버전 태그 생성
+git tag -a v0.3.0 -m "PICO Webtoon Browser v0.3.0"
 ```
 
-버전 형식: `MAJOR.MINOR.PATCH.BUILD` (예: 1.0.0.7)
+- **릴리스 빌드** (태그가 HEAD를 가리킬 때): `0.3.0`
+- **개발 빌드** (태그 이후 커밋): `0.3.1-dev` (PATCH+1 + `-dev` 접미사 자동 부여)
+
+`app/version.properties`에는 `VERSION_BUILD`만 관리되며, 빌드할 때마다 자동으로 1씩 증가합니다 (`versionCode`용).
 
 ## 주의사항
 
 1. **Keystore 파일 보안**: keystore 파일과 비밀번호는 절대 Git에 커밋하지 마세요!
 2. **Git 태그**: 한 번 푸시한 태그는 수정하기 어려우니 신중하게 생성하세요
 3. **버전 번호**: 시맨틱 버저닝(Semantic Versioning) 권장
-4. **APK 크기**: Release APK는 ProGuard로 코드 최적화되어 Debug보다 작습니다
+4. **APK 크기**: 현재 Release APK는 ProGuard(minifyEnabled)가 비활성화 상태이므로 Debug와 크기가 유사합니다
 
 ## 문제 해결
 

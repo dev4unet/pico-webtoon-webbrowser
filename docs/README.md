@@ -48,13 +48,13 @@ git submodule update
 # 1. !개인전용 폴더에서 커밋 및 푸시
 cd "!개인전용"
 git add .
-git commit -m "작업 내역 업데이트"
+git commit -m "세부 작업 내역"
 git push
 cd ..
 
 # 2. 메인 저장소에서 참조 업데이트
 git add "!개인전용"
-git commit -m "Update !개인전용"
+git commit -m "Public 저장소에서 참고할 참고용 메시지"
 git push
 ```
 

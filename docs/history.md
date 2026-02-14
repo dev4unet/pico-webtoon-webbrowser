@@ -21,6 +21,12 @@
 - architecture.md, README.md, history.md 현행화
 - v0.2.1 태그 생성 및 릴리스
 
+### README.md 개편 및 스크린샷 추가
+
+- README.md 전면 개편 (앱 소개, 개발 배경, 기능 설명 보강)
+- 앱 스크린샷 이미지 추가 (`docs/sshot1-500.jpeg`, `docs/sshot2-500.jpeg`)
+- `resizeableActivity` 설정 현행화 (`false` → `true`, `maxAspectRatio` 제거)
+
 ---
 
 ## 2026-02-13

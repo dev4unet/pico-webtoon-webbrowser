@@ -270,8 +270,11 @@ BUILD SUCCESSFUL in 1m 23s
 
 **APK 출력 위치:**
 ```
-app\build\outputs\apk\debug\pico-webtoon-webbrowser-debug-v1.0.0.x.apk
+app\build\outputs\apk\debug\pico-webtoon-webbrowser-debug-v{version}-{timestamp}.apk
 ```
+
+예: `pico-webtoon-webbrowser-debug-v0.2.2-dev-20260214-153000.apk`
+(버전은 Git 태그 기반, 타임스탬프는 빌드 시점)
 
 ### Release APK 빌드
 
@@ -399,18 +402,14 @@ git commit -m "작업 내역"
 git push origin main
 ```
 
-### 빌드 번호 자동 증가
+### 버전 관리
 
-이 프로젝트는 `app/version.properties` 파일에서 빌드 번호를 관리합니다:
+이 프로젝트는 **Git 태그 기반**으로 버전을 관리합니다:
 
-```properties
-VERSION_MAJOR=1
-VERSION_MINOR=0
-VERSION_PATCH=0
-VERSION_BUILD=8
-```
+- **릴리스 빌드**: Git 태그(예: `v0.2.1`)가 HEAD를 가리킬 때 → 버전 `0.2.1`
+- **개발 빌드**: 태그 이후 커밋이 있을 때 → 버전 `0.2.2-dev` (PATCH+1, `-dev` 접미사)
 
-빌드할 때마다 `VERSION_BUILD`가 자동으로 1씩 증가합니다.
+`app/version.properties`에는 `VERSION_BUILD`만 존재하며, 빌드할 때마다 자동으로 1씩 증가합니다 (내부 `versionCode`용).
 
 ---
 
