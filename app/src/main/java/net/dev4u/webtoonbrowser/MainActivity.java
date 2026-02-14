@@ -103,6 +103,16 @@ public class MainActivity extends AppCompatActivity {
 
         prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
 
+        // Migrate old 3-mode system to 2-mode system (v0.3.0)
+        int savedMode = prefs.getInt(SCALING_MODE_KEY, 0);
+        if (savedMode == 1) {
+            // Old "normal portrait" mode removed → fall back to webtoon mode
+            prefs.edit().putInt(SCALING_MODE_KEY, 0).apply();
+        } else if (savedMode == 2) {
+            // Old "normal landscape" → new mode 1 "normal desktop"
+            prefs.edit().putInt(SCALING_MODE_KEY, 1).apply();
+        }
+
         initViews();
         setupNavigation();
 
@@ -149,6 +159,8 @@ public class MainActivity extends AppCompatActivity {
             }
             swipeRefresh.setRefreshing(false);
         });
+        // PC모드에서는 SwipeRefreshLayout 비활성화 (스크롤 간섭 방지)
+        swipeRefresh.setEnabled(prefs.getInt(SCALING_MODE_KEY, 0) == 0);
 
         // Apply tab bar visibility
         boolean showTabs = prefs.getBoolean(SHOW_TABS_KEY, true);
@@ -440,6 +452,16 @@ public class MainActivity extends AppCompatActivity {
 
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) ->
             handleDownload(url, userAgent, contentDisposition, mimeType));
+
+        // Listen for layout changes to re-inject viewport on window resize
+        webView.addOnLayoutChangeListener((v, left, top, right, bottom,
+                oldLeft, oldTop, oldRight, oldBottom) -> {
+            int newWidth = right - left;
+            int oldWidth = oldRight - oldLeft;
+            if (newWidth != oldWidth && newWidth > 0) {
+                injectViewportForMode((WebView) v);
+            }
+        });
 
         return webView;
     }
@@ -796,7 +818,14 @@ public class MainActivity extends AppCompatActivity {
                         JSONObject settings = root.getJSONObject("settings");
                         SharedPreferences.Editor editor = prefs.edit();
                         if (settings.has("restore_tabs")) editor.putBoolean(RESTORE_TABS_KEY, settings.getBoolean("restore_tabs"));
-                        if (settings.has("scaling_mode")) editor.putInt(SCALING_MODE_KEY, settings.getInt("scaling_mode"));
+                        if (settings.has("scaling_mode")) {
+                            int importedMode = settings.getInt("scaling_mode");
+                            // Migrate old 3-mode system: old mode 1 (portrait) → 0, old mode 2 (landscape) → 1
+                            if (importedMode == 1) importedMode = 0;
+                            else if (importedMode == 2) importedMode = 1;
+                            else if (importedMode > 2) importedMode = 0;
+                            editor.putInt(SCALING_MODE_KEY, importedMode);
+                        }
                         if (settings.has("max_history")) editor.putInt(MAX_HISTORY_KEY, settings.getInt("max_history"));
                         if (settings.has("show_tabs")) editor.putBoolean(SHOW_TABS_KEY, settings.getBoolean("show_tabs"));
                         if (settings.has("bookmark_display")) editor.putInt(BOOKMARK_DISPLAY_KEY, settings.getInt("bookmark_display"));
@@ -908,11 +937,11 @@ public class MainActivity extends AppCompatActivity {
         String restoreLabel = getString(R.string.restore_tabs_on_startup) + ": " + (restoreTabs ? "ON" : "OFF");
 
         int currentMode = prefs.getInt(SCALING_MODE_KEY, 0);
-        String[] modeNames = {
-            getString(R.string.webtoon_mode),
-            getString(R.string.pc_desktop_mode)
+        String[] modeNamesShort = {
+            getString(R.string.webtoon_mode_short),
+            getString(R.string.pc_desktop_mode_short)
         };
-        String browserModeLabel = getString(R.string.browser_mode) + ": " + modeNames[Math.min(currentMode, 1)];
+        String browserModeLabel = getString(R.string.browser_mode) + ": " + modeNamesShort[Math.min(currentMode, 1)];
 
         String[] options = {
             getString(R.string.bookmarks),
@@ -923,9 +952,9 @@ public class MainActivity extends AppCompatActivity {
             getString(R.string.settings)
         };
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.menu)
-            .setItems(options, (dialog, which) -> {
+            .setItems(options, (d, which) -> {
                 switch (which) {
                     case 0: // 즐겨찾기
                         showBookmarksList();
@@ -948,7 +977,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             })
             .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     // ===================== Settings =====================
@@ -965,9 +1000,9 @@ public class MainActivity extends AppCompatActivity {
             getString(R.string.clear_history)
         };
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.settings)
-            .setItems(options, (dialog, which) -> {
+            .setItems(options, (d, which) -> {
                 switch (which) {
                     case 0: // 최대 기록 개수
                         showMaxHistoryDialog();
@@ -996,7 +1031,13 @@ public class MainActivity extends AppCompatActivity {
                 }
             })
             .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void toggleRestoreTabs() {
@@ -1015,16 +1056,22 @@ public class MainActivity extends AppCompatActivity {
 
         int current = prefs.getInt(SCALING_MODE_KEY, 0);
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.browser_mode)
-            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+            .setSingleChoiceItems(modes, Math.min(current, modes.length - 1), (d, which) -> {
                 prefs.edit().putInt(SCALING_MODE_KEY, which).apply();
                 applyScalingModeToAllTabs();
                 Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
+                d.dismiss();
             })
             .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .create();
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void showMaxHistoryDialog() {
@@ -1064,6 +1111,8 @@ public class MainActivity extends AppCompatActivity {
             applyScalingMode(tab.webView, mode);
             tab.webView.reload();
         }
+        // PC모드에서는 SwipeRefreshLayout 비활성화 (스크롤 간섭 방지)
+        swipeRefresh.setEnabled(mode == 0);
     }
 
     private void applyScalingMode(WebView webView, int mode) {
@@ -1074,15 +1123,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         switch (mode) {
-            case 1: // PC 모드 (데스크톱) - 데스크톱 UA + 넓은 viewport + 가로 화면
-                settings.setUseWideViewPort(true);
-                settings.setLoadWithOverviewMode(true);
+            case 1: // PC 모드 (가로/데스크톱) - 데스크톱 UA + 가로 화면
+                settings.setUseWideViewPort(false);
+                settings.setLoadWithOverviewMode(false);
                 settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
                 settings.setTextZoom(100);
                 settings.setUserAgentString(DESKTOP_UA + " PicoWebtoonBrowser/1.0");
                 setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
                 break;
-            default: // 웹툰 모드 (모바일/세로) - 원래 형태
+            default: // 웹툰 모드 (세로/모바일) - 원래 형태
                 settings.setUseWideViewPort(false);
                 settings.setLoadWithOverviewMode(false);
                 settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
@@ -1100,14 +1149,14 @@ public class MainActivity extends AppCompatActivity {
         js.append("(function() {");
 
         if (scalingMode == 1) {
-            // PC 모드: 넓은 viewport 주입으로 데스크톱 레이아웃 강제
+            // PC 모드: width=device-width로 페이지의 고정 viewport를 오버라이드
+            // useWideViewPort(false)이므로 viewport가 실제 뷰 크기를 따르며,
+            // 창 크기 변경 시 콘텐츠가 자연스럽게 리플로우됨
             js.append("var meta = document.querySelector('meta[name=viewport]');");
             js.append("if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }");
-            js.append("meta.setAttribute('content', 'width=1024, user-scalable=yes');");
+            js.append("meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');");
         }
 
-        // 웹툰/일반 모드: CSS 변경 없음 (원래 페이지 그대로)
-        // PC 모드도 CSS transform 불필요 (viewport 변경으로 충분)
         js.append("document.body.style.transform = '';");
         js.append("document.body.style.transformOrigin = '';");
         js.append("document.body.style.width = '';");

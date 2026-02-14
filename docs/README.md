@@ -1,6 +1,13 @@
 # PICO Webtoon Browser 문서
 
 이 폴더는 PICO Webtoon Browser 개발 시 참고할 문서들을 포함합니다.
+## 아키텍처 문서
+
+- **[architecture.md](architecture.md)** - 앱 전체 아키텍처
+  - 앱 구조, 핵심 설계 결정, 데이터 저장 방식
+  - 코드 수정 전 반드시 참고
+  - 아키텍처 변경 시 자동 업데이트
+
 ## 일반 참고 자료
 
 - **[RELEASE.md](RELEASE.md)** - 릴리스 배포 가이드
