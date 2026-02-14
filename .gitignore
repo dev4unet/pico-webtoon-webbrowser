@@ -23,8 +23,11 @@ Thumbs.db
 # Generated
 app/release/
 
-# Screenshots (test artifacts)
+# Screenshots and test artifacts
 screenshots/
+/screenshot*.jpeg
+/screenshot*.png
+/screenshot*.jpg
 
 # Keystore files (NEVER commit these!)
 *.keystore
