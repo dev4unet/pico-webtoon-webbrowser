@@ -34,6 +34,9 @@ keystore.properties
 # Temporary files
 nul
 
+# Test artifacts (private submodule)
+**/테스트/
+
 # Claude AI (keep private)
 CLAUDE.md
 .claude/

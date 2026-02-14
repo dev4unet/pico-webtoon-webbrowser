@@ -1,6 +1,6 @@
 # PICO Webtoon Browser - 앱 아키텍처
 
-> 마지막 업데이트: 2026-02-13
+> 마지막 업데이트: 2026-02-14
 > 이 문서는 앱의 전체 구조와 핵심 설계 결정을 기록합니다.
 > 코드 수정 전 반드시 참고하여 기존 기능이 깨지지 않도록 합니다.
 
@@ -100,6 +100,8 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 
 **viewport 전략**: `useWideViewPort(false)` + `loadWithOverviewMode(false)`로 viewport가 실제 View dp 너비를 따르게 함. 창 크기 변경 시 콘텐츠가 자연스럽게 리플로우됨. `injectViewportForMode()`는 페이지가 가진 고정 viewport를 `width=device-width`로 오버라이드. `OnLayoutChangeListener`가 창 크기 변경 감지 시 viewport를 재주입.
 
+**PC모드 페이지 줌**: CSS `document.documentElement.style.zoom`으로 50%~100% 줌 적용. `injectViewportForMode()`에서 viewport 오버라이드 후 줌 주입. 줌 변경 시 현재 탭에만 적용 (리로드 없이 즉시 반영).
+
 **주의**: `applyScalingMode()`에서 모든 설정이 한 번에 적용됨. 일부만 변경하면 불일치 발생.
 
 ### 4. 데이터 저장: SharedPreferences + JSON
@@ -124,6 +126,7 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 | `show_tabs` | boolean | `true` | 탭 바 표시 |
 | `bookmark_display` | int | `0` | 북마크 표시 방식 |
 | `history_display` | int | `0` | 기록 표시 방식 |
+| `pc_zoom` | int | `100` | PC모드 페이지 줌 (%) |
 
 ### 5. 메뉴 구조: 2단계 다이얼로그
 
@@ -133,13 +136,14 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 - 다이얼로그는 VR 플로팅 윈도우에서도 정상 표시
 - 자주 사용하는 기능을 메인 메뉴에 배치
 
-**메인 메뉴 구조 (6항목)**:
+**메인 메뉴 구조 (6~7항목)**:
 1. 즐겨찾기 목록
 2. 방문 기록
-3. 브라우저 모드: {현재모드} (→ 3모드 선택 다이얼로그)
-4. 앱 시작 시 탭 복원: ON/OFF (즉시 토글)
-5. 탭 바 표시: ON/OFF (즉시 토글)
-6. 설정 (→ 설정 메뉴)
+3. 브라우저 모드: {현재모드} (→ 2모드 선택 다이얼로그)
+4. PC모드 페이지 줌: N% (PC모드일 때만 표시, → 줌 선택 다이얼로그)
+5. 앱 시작 시 탭 복원: ON/OFF (즉시 토글)
+6. 탭 바 표시: ON/OFF (즉시 토글)
+7. 설정 (→ 설정 메뉴)
 
 **설정 메뉴 구조 (8항목)**:
 1. 홈페이지 설정
@@ -150,6 +154,34 @@ tabs.get(index).webView.setVisibility(View.VISIBLE);
 6. 설정 내보내기/가져오기
 7. 방문 기록 삭제
 8. 앱 정보
+
+### 6. 다이얼로그 UI 패턴
+
+**결정**: 모든 다이얼로그 최대 너비 400dp 제한 + 서브 다이얼로그에 "뒤로" 네비게이션
+**이유**:
+- PC모드(가로)에서 MATCH_PARENT 다이얼로그가 너무 넓어 사용성 저하
+- 서브 다이얼로그에서 "취소"만 있으면 메인 메뉴로 돌아갈 수 없어 불편
+
+**구현**:
+```java
+// 다이얼로그 너비 제한 (모든 AlertDialog에 적용)
+private void adjustDialogWidth(AlertDialog dialog) {
+    int maxWidthPx = (int) (400 * getResources().getDisplayMetrics().density);
+    int width = Math.min(screenWidth, maxWidthPx);
+    dialog.getWindow().setLayout(width, WRAP_CONTENT);
+}
+
+// 서브 다이얼로그 뒤로가기 패턴
+.setNegativeButton(R.string.go_back, (d, w) -> showParentMenu())
+```
+
+**네비게이션 구조**:
+- 메인 메뉴 → 설정: "뒤로" → `showMainMenu()`
+- 메인 메뉴 → 브라우저 모드 선택: "뒤로" → `showMainMenu()`
+- 메인 메뉴 → PC모드 줌: "뒤로" → `showMainMenu()`
+- 설정 → 최대 기록 개수: "뒤로" → `showSettings()`
+- 설정 → 즐겨찾기 표시: "뒤로" → `showSettings()`
+- 설정 → 기록 표시: "뒤로" → `showSettings()`
 
 ---
 
@@ -224,3 +256,5 @@ app/src/main/
 |------|----------|
 | 2026-02-13 | 초기 아키텍처 문서 생성 (23개 완료 기능 기준) |
 | 2026-02-13 | 브라우저 모드 3모드→2모드 변경, 동적 viewport 도입 |
+| 2026-02-14 | PC모드 페이지 줌 기능 추가 (50%~100%), SharedPreferences 키 추가 |
+| 2026-02-14 | 다이얼로그 UI 패턴 추가 (400dp 최대 너비, 뒤로가기 네비게이션) |

@@ -53,4 +53,6 @@
     <string name="settings_imported">환경 설정이 불러와졌습니다</string>
     <string name="export_failed">내보내기 실패</string>
     <string name="import_failed">불러오기 실패</string>
+    <string name="pc_zoom_level">PC모드 페이지 줌</string>
+    <string name="go_back">뒤로</string>
 </resources>

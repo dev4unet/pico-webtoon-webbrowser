@@ -1,5 +1,73 @@
 # 진행내역
 
+## 2026-02-14
+
+### PC모드 페이지 줌 기능
+
+- **PC모드 페이지 줌**: 50%~100% CSS zoom 적용 (메인 메뉴에서 조절)
+- CSS `document.documentElement.style.zoom`으로 리로드 없이 즉시 반영
+- 현재 탭에만 적용, 설정 내보내기/가져오기 포함
+
+### 다이얼로그 UI 개선
+
+- **다이얼로그 최대 너비 400dp 제한**: PC모드(가로)에서 다이얼로그가 너무 넓어지는 문제 해결
+- `adjustDialogWidth()` 헬퍼 메서드 추가, 모든 AlertDialog에 적용
+- **서브 다이얼로그 뒤로가기 네비게이션**: "취소" → "뒤로" 변경
+  - 설정/모드선택/줌 → 메인 메뉴로 복귀
+  - 최대기록/표시방식 → 설정 메뉴로 복귀
+
+### 문서 현행화 및 v0.2.1 릴리스
+
+- architecture.md, README.md, history.md, 개발현황.md 현행화
+- v0.2.1 태그 생성 및 릴리스
+
+---
+
+## 2026-02-13
+
+### 브라우저 모드 시스템 개편
+
+- **3모드 → 2모드 변경**: 웹툰 모드 (세로/모바일) + PC 모드 (가로/데스크톱)
+- 일반 모드(세로/데스크톱) 제거 (PICO VR에서 가독성 불량)
+- **동적 viewport 시스템** 도입: `injectViewportForMode()` + `OnLayoutChangeListener`
+- `useWideViewPort(false)` + `loadWithOverviewMode(false)` 전략
+
+### 다이얼로그 너비 MATCH_PARENT 수정
+
+- 메인 메뉴, 설정, 스케일링 모드 다이얼로그에 MATCH_PARENT 적용
+- SwipeRefreshLayout PC모드에서 비활성화
+
+### 아키텍처 문서 생성
+
+- `docs/architecture.md` 최초 생성 (앱 전체 구조, 설계 결정 기록)
+
+---
+
+## 2026-02-12
+
+### APK 빌드 이슈 해결 (v0.1.0 → v0.1.1)
+
+- Debug/Release APK 버전 불일치 해결 (빌드 step 통합)
+- Release APK 설치 불가 해결 (signingConfig 추가)
+- **공유 Keystore 시스템** 구축 (debug + release)
+  - 모든 개발 PC + CI에서 동일한 서명
+  - GitHub Secrets에 Base64 인코딩 등록
+- **Git 태그 기반 버전 관리** 도입 (version.properties 단순화)
+
+### 기능 구현 (v0.2.0)
+
+- **메인 메뉴 구조**: ≡ 버튼 → 6항목 메인 메뉴 → 설정 메뉴
+- **브라우저 모드**: 웹툰 모드 + PC 모드 (UA, viewport, 화면 방향 조합)
+- **탭 상태 영속성**: 앱 종료 시 저장, 시작 시 복원 (ON/OFF)
+- **방문 기록**: 자동 기록, 최대 보관 개수 설정, 표시 방식 선택
+- **즐겨찾기 내보내기/불러오기**: JSON 형식
+- **Pull-to-refresh**: SwipeRefreshLayout
+- **환경 설정 내보내기/불러오기**: 즐겨찾기/방문 기록 포함 선택
+- **탭 바 표시/숨김 설정**
+- 뒤로가기 앱 종료 방지 버그 수정
+
+---
+
 ## 2026-02-11
 
 ### GitHub Actions 자동 배포 시스템 구축

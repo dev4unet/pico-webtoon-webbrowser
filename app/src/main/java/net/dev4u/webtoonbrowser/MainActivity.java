@@ -56,7 +56,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String SHOW_TABS_KEY = "show_tabs";
     private static final String BOOKMARK_DISPLAY_KEY = "bookmark_display";
     private static final String HISTORY_DISPLAY_KEY = "history_display";
+    private static final String PC_ZOOM_KEY = "pc_zoom";
     private static final int DEFAULT_MAX_HISTORY = 100;
+    private static final int DEFAULT_PC_ZOOM = 100;
     private static final String DESKTOP_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final int FILE_CHOOSER_REQUEST = 1001;
     private static final int EXPORT_BOOKMARKS_REQUEST = 1002;
@@ -831,6 +833,7 @@ public class MainActivity extends AppCompatActivity {
                         if (settings.has("bookmark_display")) editor.putInt(BOOKMARK_DISPLAY_KEY, settings.getInt("bookmark_display"));
                         if (settings.has("history_display")) editor.putInt(HISTORY_DISPLAY_KEY, settings.getInt("history_display"));
                         if (settings.has("home_url")) editor.putString(HOME_URL_KEY, settings.getString("home_url"));
+                        if (settings.has("pc_zoom")) editor.putInt(PC_ZOOM_KEY, settings.getInt("pc_zoom"));
                         editor.apply();
 
                         // Apply settings
@@ -943,47 +946,55 @@ public class MainActivity extends AppCompatActivity {
         };
         String browserModeLabel = getString(R.string.browser_mode) + ": " + modeNamesShort[Math.min(currentMode, 1)];
 
-        String[] options = {
-            getString(R.string.bookmarks),
-            getString(R.string.history),
-            browserModeLabel,
-            restoreLabel,
-            tabToggleLabel,
-            getString(R.string.settings)
-        };
+        int pcZoom = prefs.getInt(PC_ZOOM_KEY, DEFAULT_PC_ZOOM);
+        String pcZoomLabel = getString(R.string.pc_zoom_level) + ": " + pcZoom + "%";
+
+        List<String> optionList = new ArrayList<>();
+        optionList.add(getString(R.string.bookmarks));      // 0
+        optionList.add(getString(R.string.history));         // 1
+        optionList.add(browserModeLabel);                    // 2
+        if (currentMode == 1) {
+            optionList.add(pcZoomLabel);                     // 3 (PC모드일 때만)
+        }
+        optionList.add(restoreLabel);
+        optionList.add(tabToggleLabel);
+        optionList.add(getString(R.string.settings));
+        String[] options = optionList.toArray(new String[0]);
+
+        final boolean pcModeActive = (currentMode == 1);
 
         AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.menu)
             .setItems(options, (d, which) -> {
-                switch (which) {
-                    case 0: // 즐겨찾기
-                        showBookmarksList();
-                        break;
-                    case 1: // 방문 기록
-                        showHistory();
-                        break;
-                    case 2: // 브라우저 모드
-                        showScalingModeDialog();
-                        break;
-                    case 3: // 탭 복원
-                        toggleRestoreTabs();
-                        break;
-                    case 4: // 탭 바 표시/숨김
-                        toggleShowTabs();
-                        break;
-                    case 5: // 설정
-                        showSettings();
-                        break;
+                int idx = which;
+                if (idx == 0) { // 즐겨찾기
+                    showBookmarksList();
+                } else if (idx == 1) { // 방문 기록
+                    showHistory();
+                } else if (idx == 2) { // 브라우저 모드
+                    showScalingModeDialog();
+                } else if (pcModeActive && idx == 3) { // PC모드 페이지 줌
+                    showPcZoomDialog();
+                } else {
+                    // PC모드일 때 idx 보정
+                    int adjustedIdx = pcModeActive ? idx - 4 : idx - 3;
+                    switch (adjustedIdx) {
+                        case 0: // 탭 복원
+                            toggleRestoreTabs();
+                            break;
+                        case 1: // 탭 바 표시/숨김
+                            toggleShowTabs();
+                            break;
+                        case 2: // 설정
+                            showSettings();
+                            break;
+                    }
                 }
             })
             .setNegativeButton(android.R.string.cancel, null)
             .create();
         dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(
-                android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
-        }
+        adjustDialogWidth(dialog);
     }
 
     // ===================== Settings =====================
@@ -1030,14 +1041,10 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             })
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(R.string.go_back, (d, w) -> showMainMenu())
             .create();
         dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(
-                android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
-        }
+        adjustDialogWidth(dialog);
     }
 
     private void toggleRestoreTabs() {
@@ -1064,14 +1071,41 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
                 d.dismiss();
             })
-            .setNegativeButton(android.R.string.cancel, null)
+            .setNegativeButton(R.string.go_back, (d, w) -> showMainMenu())
             .create();
         dialog.show();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(
-                android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        adjustDialogWidth(dialog);
+    }
+
+    private void showPcZoomDialog() {
+        int[] zoomLevels = {50, 60, 70, 75, 80, 85, 90, 95, 100};
+        String[] zoomLabels = new String[zoomLevels.length];
+        int currentZoom = prefs.getInt(PC_ZOOM_KEY, DEFAULT_PC_ZOOM);
+        int selectedIndex = zoomLevels.length - 1; // 기본: 100%
+
+        for (int i = 0; i < zoomLevels.length; i++) {
+            zoomLabels[i] = zoomLevels[i] + "%";
+            if (zoomLevels[i] == currentZoom) {
+                selectedIndex = i;
+            }
         }
+
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+            .setTitle(R.string.pc_zoom_level)
+            .setSingleChoiceItems(zoomLabels, selectedIndex, (d, which) -> {
+                prefs.edit().putInt(PC_ZOOM_KEY, zoomLevels[which]).apply();
+                // 줌 변경 시 현재 탭에만 즉시 적용 (리로드 없이)
+                WebView activeWv = getActiveWebView();
+                if (activeWv != null) {
+                    injectViewportForMode(activeWv);
+                }
+                Toast.makeText(this, getString(R.string.pc_zoom_level) + ": " + zoomLevels[which] + "%", Toast.LENGTH_SHORT).show();
+                d.dismiss();
+            })
+            .setNegativeButton(R.string.go_back, (d, w) -> showMainMenu())
+            .create();
+        dialog.show();
+        adjustDialogWidth(dialog);
     }
 
     private void showMaxHistoryDialog() {
@@ -1087,10 +1121,10 @@ public class MainActivity extends AppCompatActivity {
         container.setPadding(padding, padding / 2, padding, 0);
         container.addView(input);
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.max_history_count)
             .setView(container)
-            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+            .setPositiveButton(android.R.string.ok, (d, which) -> {
                 try {
                     int count = Integer.parseInt(input.getText().toString().trim());
                     if (count > 0) {
@@ -1100,9 +1134,12 @@ public class MainActivity extends AppCompatActivity {
                 } catch (NumberFormatException e) {
                     // Ignore
                 }
+                showSettings();
             })
-            .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .setNegativeButton(R.string.go_back, (d, w) -> showSettings())
+            .create();
+        dialog.show();
+        adjustDialogWidth(dialog);
     }
 
     private void applyScalingModeToAllTabs() {
@@ -1155,6 +1192,17 @@ public class MainActivity extends AppCompatActivity {
             js.append("var meta = document.querySelector('meta[name=viewport]');");
             js.append("if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }");
             js.append("meta.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes');");
+
+            // PC모드 페이지 줌 적용 (CSS zoom)
+            int pcZoom = prefs.getInt(PC_ZOOM_KEY, DEFAULT_PC_ZOOM);
+            if (pcZoom != 100) {
+                js.append("document.documentElement.style.zoom = '").append(pcZoom / 100.0).append("';");
+            } else {
+                js.append("document.documentElement.style.zoom = '';");
+            }
+        } else {
+            // 웹툰 모드: 줌 초기화
+            js.append("document.documentElement.style.zoom = '';");
         }
 
         js.append("document.body.style.transform = '';");
@@ -1165,6 +1213,15 @@ public class MainActivity extends AppCompatActivity {
         js.append("})();");
 
         webView.evaluateJavascript(js.toString(), null);
+    }
+
+    private void adjustDialogWidth(AlertDialog dialog) {
+        if (dialog.getWindow() != null) {
+            int screenWidth = getResources().getDisplayMetrics().widthPixels;
+            int maxWidthPx = (int) (400 * getResources().getDisplayMetrics().density);
+            int width = Math.min(screenWidth, maxWidthPx);
+            dialog.getWindow().setLayout(width, android.view.WindowManager.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private void toggleShowTabs() {
@@ -1185,15 +1242,18 @@ public class MainActivity extends AppCompatActivity {
 
         int current = prefs.getInt(BOOKMARK_DISPLAY_KEY, 0); // 기본: 타이틀만
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.bookmark_display_mode)
-            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+            .setSingleChoiceItems(modes, current, (d, which) -> {
                 prefs.edit().putInt(BOOKMARK_DISPLAY_KEY, which).apply();
                 Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
+                d.dismiss();
+                showSettings();
             })
-            .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .setNegativeButton(R.string.go_back, (d, w) -> showSettings())
+            .create();
+        dialog.show();
+        adjustDialogWidth(dialog);
     }
 
     private void showHistoryDisplayDialog() {
@@ -1205,15 +1265,18 @@ public class MainActivity extends AppCompatActivity {
 
         int current = prefs.getInt(HISTORY_DISPLAY_KEY, 0); // 기본: 타이틀만
 
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
+        AlertDialog dialog = new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog)
             .setTitle(R.string.history_display_mode)
-            .setSingleChoiceItems(modes, current, (dialog, which) -> {
+            .setSingleChoiceItems(modes, current, (d, which) -> {
                 prefs.edit().putInt(HISTORY_DISPLAY_KEY, which).apply();
                 Toast.makeText(this, modes[which], Toast.LENGTH_SHORT).show();
-                dialog.dismiss();
+                d.dismiss();
+                showSettings();
             })
-            .setNegativeButton(android.R.string.cancel, null)
-            .show();
+            .setNegativeButton(R.string.go_back, (d, w) -> showSettings())
+            .create();
+        dialog.show();
+        adjustDialogWidth(dialog);
     }
 
     // ===================== History =====================
@@ -1438,6 +1501,7 @@ public class MainActivity extends AppCompatActivity {
             settings.put("bookmark_display", prefs.getInt(BOOKMARK_DISPLAY_KEY, 0));
             settings.put("history_display", prefs.getInt(HISTORY_DISPLAY_KEY, 0));
             settings.put("home_url", prefs.getString(HOME_URL_KEY, DEFAULT_HOME_URL));
+            settings.put("pc_zoom", prefs.getInt(PC_ZOOM_KEY, DEFAULT_PC_ZOOM));
             root.put("settings", settings);
 
             // Bookmarks

@@ -138,6 +138,8 @@ pico-webtoon-webbrowser/
 ├── docs/
 │   ├── README.md                             # 문서 폴더 안내
 │   ├── RELEASE.md                            # 릴리스 배포 가이드
+│   ├── architecture.md                       # 앱 아키텍처 문서
+│   ├── history.md                            # 개발 진행 기록
 │   └── development-setup-windows.md          # Windows 개발 환경 구축 가이드
 ├── build.gradle                              # 프로젝트 빌드 설정
 ├── settings.gradle                           # 프로젝트 설정
@@ -148,8 +150,7 @@ pico-webtoon-webbrowser/
 ├── gradlew                                   # Gradle Wrapper 스크립트 (Unix)
 ├── .gitignore                                # Git 제외 파일 목록
 ├── .gitmodules                               # Git Submodule 설정
-├── README.md                                 # 이 파일
-└── history.md                                # 개발 진행 기록
+└── README.md                                 # 이 파일
 ```
 
 ---
@@ -232,12 +233,17 @@ git push origin v1.0.1
 | 기능 | 설명 |
 |------|------|
 | 세로형 윈도우 | maxAspectRatio 5.0으로 세로로 긴 윈도우 |
-| 다중 탭 | 탭 추가/전환/닫기 지원 |
-| 즐겨찾기 | 현재 페이지 즐겨찾기 추가/삭제/목록 |
+| 다중 탭 | 탭 추가/전환/닫기 지원, 탭 바 표시/숨김 설정 |
+| 즐겨찾기 | 추가/삭제/목록, 내보내기/불러오기 (JSON) |
 | URL 입력 | 직접 URL 입력, 자동 https 추가, 검색어 입력 시 Google 검색 |
 | 네비게이션 | 뒤로/앞으로/새로고침/홈 |
 | 홈페이지 설정 | 홈 버튼 길게 눌러서 홈페이지 변경 (현재 페이지/URL 직접 입력/기본값 초기화) |
+| 브라우저 모드 | 웹툰 모드 (세로/모바일 UA) / PC 모드 (가로/데스크톱 UA) |
+| PC모드 줌 | PC 모드에서 50%~100% 페이지 줌 조절 |
+| 방문 기록 | 자동 기록, 최대 보관 개수 설정, 표시 방식 선택 |
+| 탭 상태 복원 | 앱 종료 시 탭 저장, 시작 시 복원 (ON/OFF) |
 | Pull-to-Refresh | 아래로 당겨서 새로고침 |
+| 설정 백업 | 환경 설정 내보내기/불러오기 (즐겨찾기, 방문 기록 포함 선택) |
 | 다운로드 | 파일 다운로드 지원 (DownloadManager) |
 | 파일 업로드 | 파일 선택기를 통한 업로드 |
 | 다크 테마 | VR 환경 최적화 다크 UI |
