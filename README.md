@@ -1,5 +1,4 @@
 # PICO 4 Ultra VR - Webtoon Browser
-
 PICO 4 Ultra VR 헤드셋에서 웹툰을 편하게 읽기 위한 **세로형(Portrait) 웹 브라우저** 앱.   
 (제 알리익스프레스 최신 정보 글이 웹 브라우저의 홈 페이지로 설정되어있으며 변경 가능합니다.)   
 
